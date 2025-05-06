@@ -3,13 +3,11 @@ import type { Project, ProjectInput } from '@/models/Project';
 export class StorageService {
   private storageKey = 'managme_projects';
 
-  // Get all projects
   getProjects(): Project[] {
     try {
       const projects = localStorage.getItem(this.storageKey);
       if (!projects) return [];
       
-      // Prawidłowe przetwarzanie dat z JSON
       const parsedProjects = JSON.parse(projects, (key, value) => {
         if (key === 'createdAt' && value) {
           return new Date(value);
@@ -24,13 +22,11 @@ export class StorageService {
     }
   }
 
-  // Get a project by ID
   getProject(id: string): Project | undefined {
     const projects = this.getProjects();
     return projects.find(project => project.id === id);
   }
 
-  // Create a new project
   createProject(projectInput: ProjectInput): Project {
     try {
       const projects = this.getProjects();
@@ -48,7 +44,6 @@ export class StorageService {
     }
   }
 
-  // Update an existing project
   updateProject(id: string, projectInput: ProjectInput): Project | null {
     try {
       const projects = this.getProjects();
@@ -56,7 +51,6 @@ export class StorageService {
       
       if (index === -1) return null;
       
-      // Preserve the original createdAt if it exists
       const existingProject = projects[index];
       
       const updatedProject: Project = {
@@ -75,7 +69,6 @@ export class StorageService {
     }
   }
 
-  // Delete a project
   deleteProject(id: string): boolean {
     try {
       const projects = this.getProjects();
@@ -94,5 +87,4 @@ export class StorageService {
   }
 }
 
-// Create a singleton instance
 export const storageService = new StorageService();

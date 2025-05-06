@@ -73,31 +73,25 @@ export class TaskService {
       const existingTask = tasks[index];
       let updatedTask: Task = { ...existingTask, ...taskInput };
 
-      // Handle status change logic
       if (taskInput.status !== undefined && taskInput.status !== existingTask.status) {
         if (taskInput.status === TaskStatus.DOING && existingTask.status === TaskStatus.TODO) {
-          // When moving from TODO to DOING, set start date if not already set
           if (!updatedTask.startedAt) {
             updatedTask.startedAt = new Date();
           }
           
-          // Require assignee for DOING status
           if (!updatedTask.assigneeId && !taskInput.assigneeId) {
             throw new Error('Zadanie musi mieć przypisanego użytkownika przed zmianą statusu na "W trakcie"');
           }
         } 
         else if (taskInput.status === TaskStatus.DONE && existingTask.status !== TaskStatus.DONE) {
-          // When moving to DONE from any status, set completion date
           updatedTask.completedAt = new Date();
           
-          // Require assignee for DONE status
           if (!updatedTask.assigneeId) {
             throw new Error('Zadanie musi mieć przypisanego użytkownika przed zmianą statusu na "Ukończone"');
           }
         }
       }
       
-      // When assigning user to a TODO task, automatically change status to DOING
       if (taskInput.assigneeId && !existingTask.assigneeId && existingTask.status === TaskStatus.TODO) {
         updatedTask.status = TaskStatus.DOING;
         updatedTask.startedAt = new Date();

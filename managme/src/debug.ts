@@ -9,7 +9,6 @@ export function debugApp() {
     console.error('Błąd localStorage:', error);
   }
   
-  // Sprawdzenie wersji React
   try {
     console.log('React jest załadowany');
   } catch (e) {
