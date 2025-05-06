@@ -29,15 +29,12 @@ export default function StoryList({ stories, onEdit, onDelete, onAddNew, users }
     setFilter(event.target.value);
   };
 
-  // Filtrowanie historyjek
   const filteredStories = stories.filter(story => {
-    // Filtrowanie po zakładkach (status)
     if (tabValue === 0 && story.status !== Status.TODO) return false;
     if (tabValue === 1 && story.status !== Status.DOING) return false;
     if (tabValue === 2 && story.status !== Status.DONE) return false;
     if (tabValue === 3) { /* wszystkie - brak filtrowania */ }
     
-    // Filtrowanie po właścicielu
     if (filter !== 'all' && story.ownerId !== filter) return false;
     
     return true;

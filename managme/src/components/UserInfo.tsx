@@ -18,7 +18,6 @@ export default function UserInfo({ onLogout }: UserInfoProps) {
   const open = Boolean(anchorEl);
 
   useEffect(() => {
-    // Try to get current user from auth service first, then fall back to user service
     const authUser = authService.getCurrentUser();
     if (authUser) {
       setCurrentUser(authUser);

@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { 
-  Container, CssBaseline, Box, ThemeProvider, 
-  createTheme, Snackbar, Alert, AppBar, Toolbar,
-  Typography, Tab, Tabs, Paper
+  Container, CssBaseline, Box, Snackbar, Alert, AppBar, Toolbar,
+  Typography, Tab, Tabs, Paper, Button, Badge, Divider, Fade, useTheme
 } from '@mui/material';
 import type { Project, ProjectInput } from '@/models/Project';
 import type { Story, StoryInput } from '@/models/Story';
 import type { User } from '@/models/User';
 import type { Task, TaskInput } from '@/models/Task';
+import { TaskStatus } from '@/models/Task'; // Moved this import to the top
 import { storageService } from '@/services/StorageService';
 import { storyService } from '@/services/StoryService';
 import { userService } from '@/services/UserService';
@@ -26,79 +26,19 @@ import ActiveProjectBanner from '@/components/ActiveProjectBanner';
 import LoginForm from '@/components/LoginForm';
 import React from 'react';
 import ProjectSelector from '@/components/ProjectSelector';
+import ThemeToggle from '@/components/ThemeToggle';
 import { debugApp } from '@/debug';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+import HomeIcon from '@mui/icons-material/Home';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import TaskIcon from '@mui/icons-material/Task';
+import AssignmentIcon from '@mui/icons-material/Assignment';
 
 try {
   debugApp();
 } catch (e) {
   console.error("Błąd debugowania:", e);
 }
-
-const theme = createTheme({
-  palette: {
-    mode: 'light',
-    primary: {
-      main: '#800020', // burgundy
-      dark: '#5d0018',
-      light: '#a04048'
-    },
-    secondary: {
-      main: '#424242', // dark gray
-      dark: '#212121',
-      light: '#757575'
-    },
-    background: {
-      default: '#f5f5f5',
-      paper: '#ffffff'
-    },
-    text: {
-      primary: '#212121',
-      secondary: '#424242'
-    },
-    error: {
-      main: '#d32f2f'
-    },
-    warning: {
-      main: '#f57c00',
-      dark: '#e65100'
-    },
-    success: {
-      main: '#388e3c'
-    },
-    info: {
-      main: '#0288d1'
-    }
-  },
-  typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-    h4: {
-      fontWeight: 600
-    },
-    h6: {
-      fontWeight: 500
-    }
-  },
-  shape: {
-    borderRadius: 8
-  },
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          textTransform: 'none',
-          fontWeight: 500
-        }
-      }
-    },
-    MuiCard: {
-      styleOverrides: {
-        root: {
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
-        }
-      }
-    }
-  }
-});
 
 enum View {
   LOGIN,
@@ -111,7 +51,9 @@ enum View {
   TASK_DETAILS
 }
 
-function App() {
+function AppContent() {
+  const theme = useTheme();
+  
   const [view, setView] = useState<View>(View.LOGIN);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -126,7 +68,7 @@ function App() {
   const [notification, setNotification] = useState({
     open: false,
     message: '',
-    severity: 'success' as 'success' | 'error'
+    severity: 'success' as 'success' | 'error' | 'warning' | 'info'
   });
   const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
 
@@ -144,7 +86,6 @@ function App() {
         setView(View.PROJECTS);
         loadData();
       } else {
-        // Token invalid or expired and refresh failed
         setIsAuthenticated(false);
         setView(View.LOGIN);
       }
@@ -358,7 +299,7 @@ function App() {
     setView(View.STORIES);
   };
 
-  const showNotification = (message: string, severity: 'success' | 'error') => {
+  const showNotification = (message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
     setNotification({ open: true, message, severity });
   };
 
@@ -391,21 +332,52 @@ function App() {
     return 0;
   };
 
+  const getTodoTasksCount = () => {
+    if (!activeProject) return 0;
+    return taskService.getTasksByStatus(TaskStatus.TODO).length;
+  };
+
   if (!isAuthenticated) {
     return (
-      <ThemeProvider theme={theme}>
+      <>
         <CssBaseline />
-        <Container maxWidth="sm" sx={{ py: 8 }}>
-          <Box sx={{ mb: 4, textAlign: 'center' }}>
-            <Typography variant="h3" component="h1" gutterBottom color="primary.main" fontWeight={700}>
-              ManagMe
-            </Typography>
-            <Typography variant="subtitle1" color="text.secondary">
-              System zarządzania projektami
-            </Typography>
-          </Box>
-          <LoginForm onLoginSuccess={handleLoginSuccess} />
-        </Container>
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            minHeight: '100vh',
+            background: theme.palette.mode === 'dark' 
+              ? 'linear-gradient(135deg, #121212 0%, #1e1e1e 50%, #262626 100%)' 
+              : 'linear-gradient(135deg, #f0f0f0 0%, #fff 50%, #f8f8f8 100%)',
+          }}
+        >
+          <Container maxWidth="sm" sx={{ py: 8, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <Fade in={true} timeout={1000}>
+              <Box>
+                <Box sx={{ mb: 4, textAlign: 'center' }}>
+                  <Typography 
+                    variant="h3" 
+                    component="h1" 
+                    gutterBottom 
+                    color="primary.main" 
+                    fontWeight={700}
+                    sx={{ 
+                      letterSpacing: '-0.05em',
+                      textShadow: theme.palette.mode === 'dark' 
+                        ? '2px 2px 4px rgba(0,0,0,0.5)'
+                        : 'none'
+                    }}
+                  >
+                    ManagMe
+                  </Typography>
+                  <Typography variant="subtitle1" color="text.secondary">
+                    System zarządzania projektami
+                  </Typography>
+                </Box>
+                <LoginForm onLoginSuccess={handleLoginSuccess} />
+              </Box>
+            </Fade>
+          </Container>
+        </Box>
         <Snackbar 
           open={notification.open} 
           autoHideDuration={4000} 
@@ -416,129 +388,197 @@ function App() {
             {notification.message}
           </Alert>
         </Snackbar>
-      </ThemeProvider>
+      </>
     );
   }
 
   return (
-    <ThemeProvider theme={theme}>
+    <>
       <CssBaseline />
-      <AppBar position="static" sx={{ bgcolor: 'secondary.dark' }}>
-        <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1, color: 'white' }}>
-            ManagMe
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <UserInfo onLogout={handleLogout} />
-          </Box>
-        </Toolbar>
-      </AppBar>
-      
-      <Container maxWidth="md" sx={{ py: 4 }}>
-        <ActiveProjectBanner onSelectProject={handleProjectSelect} activeProject={activeProject} />
-        
-        <Paper sx={{ mb: 3, overflow: 'hidden' }}>
-          <Tabs 
-            value={getTabValue()} 
-            onChange={handleMainNavChange}
-            variant="fullWidth"
-            sx={{
-              '& .MuiTabs-indicator': {
-                backgroundColor: 'primary.main',
-                height: 3
-              }
-            }}
-          >
-            <Tab label="Projekty" disabled={view === View.PROJECT_FORM} />
-            <Tab 
-              label="Historyjki" 
-              disabled={!activeProject || view === View.PROJECT_FORM || view === View.STORY_FORM} 
-            />
-            <Tab 
-              label="Zadania" 
-              disabled={!activeProject || view === View.PROJECT_FORM || view === View.STORY_FORM || view === View.TASK_FORM} 
-            />
-          </Tabs>
-        </Paper>
-        
-        <Box sx={{ my: 2 }}>
-          {view === View.PROJECTS && (
-            <ProjectList 
-              projects={projects} 
-              onEdit={handleProjectEditClick} 
-              onDelete={handleProjectDeleteClick} 
-              onAddNew={handleProjectAddClick} 
-            />
-          )}
-          
-          {view === View.PROJECT_FORM && (
-            <ProjectForm 
-              project={editingProject || undefined} 
-              onSubmit={handleProjectFormSubmit} 
-              onCancel={handleProjectFormCancel} 
-            />
-          )}
-          
-          {view === View.STORIES && (
-            <StoryList 
-              stories={stories} 
-              onEdit={handleStoryEditClick} 
-              onDelete={handleStoryDeleteClick} 
-              onAddNew={handleStoryAddClick}
-              users={getUsersMap()} 
-            />
-          )}
-          
-          {view === View.STORY_FORM && (
-            <StoryForm 
-              story={editingStory || undefined} 
-              onSubmit={handleStoryFormSubmit} 
-              onCancel={handleStoryFormCancel} 
-            />
-          )}
-          
-          {view === View.TASKS && (
-            <TaskKanbanBoard 
-              onAddTask={handleTaskAddClick}
-              onEditTask={handleTaskEditClick}
-              onViewTaskDetails={handleTaskViewClick}
-            />
-          )}
-          
-          {view === View.TASK_FORM && (
-            <TaskForm 
-              task={editingTask || undefined} 
-              onSubmit={handleTaskFormSubmit} 
-              onCancel={handleTaskFormCancel} 
-            />
-          )}
-          
-          {view === View.TASK_DETAILS && viewingTask && (
-            <TaskDetails 
-              task={viewingTask} 
-              onBack={handleTaskDetailsBack}
-              onUpdate={handleTaskDetailsUpdate}
-            />
-          )}
-        </Box>
-        
-        <ProjectSelector 
-          open={isProjectSelectorOpen} 
-          onClose={() => setIsProjectSelectorOpen(false)}
-          onProjectSelected={handleProjectSelected}
-        />
-        
-        <Snackbar 
-          open={notification.open} 
-          autoHideDuration={4000} 
-          onClose={handleCloseNotification}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: 'column',
+        minHeight: '100vh',
+        backgroundColor: 'background.default',
+        transition: 'background-color 0.3s ease-in-out',
+      }}>
+        <AppBar 
+          position="static" 
+          sx={{ 
+            background: theme.palette.mode === 'dark' 
+              ? 'linear-gradient(90deg, #500013 0%, #800020 100%)' 
+              : 'linear-gradient(90deg, #800020 0%, #9a2639 100%)',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.15)',
+          }}
+          elevation={0}
         >
-          <Alert onClose={handleCloseNotification} severity={notification.severity} sx={{ width: '100%' }}>
-            {notification.message}
-          </Alert>
-        </Snackbar>
-      </Container>
+          <Toolbar>
+            <Typography 
+              variant="h6" 
+              component="div" 
+              sx={{ 
+                flexGrow: 1, 
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1
+              }}
+            >
+              <HomeIcon /> ManagMe
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <ThemeToggle />
+              <Divider orientation="vertical" flexItem sx={{ bgcolor: 'rgba(255,255,255,0.2)', mx: 1 }} />
+              <UserInfo onLogout={handleLogout} />
+            </Box>
+          </Toolbar>
+        </AppBar>
+        
+        <Container maxWidth="md" sx={{ py: 4, flexGrow: 1 }}>
+          <ActiveProjectBanner onSelectProject={handleProjectSelect} activeProject={activeProject} />
+          
+          <Paper sx={{ mb: 3, overflow: 'hidden', borderRadius: 2 }}>
+            <Tabs 
+              value={getTabValue()} 
+              onChange={handleMainNavChange}
+              variant="fullWidth"
+              sx={{
+                '& .MuiTabs-indicator': {
+                  backgroundColor: 'primary.main',
+                  height: 3
+                }
+              }}
+            >
+              <Tab 
+                icon={<DashboardIcon />} 
+                label="Projekty" 
+                iconPosition="start"
+                disabled={view === View.PROJECT_FORM} 
+              />
+              <Tab 
+                icon={<AssignmentIcon />}
+                label="Historyjki" 
+                iconPosition="start"
+                disabled={!activeProject || view === View.PROJECT_FORM || view === View.STORY_FORM} 
+              />
+              <Tab 
+                icon={<TaskIcon />}
+                label={
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    Zadania
+                    {activeProject && getTodoTasksCount() > 0 && (
+                      <Badge 
+                        badgeContent={getTodoTasksCount()} 
+                        color="error"
+                        sx={{ ml: 1 }}
+                      />
+                    )}
+                  </Box>
+                }
+                iconPosition="start"
+                disabled={!activeProject || view === View.PROJECT_FORM || view === View.STORY_FORM || view === View.TASK_FORM} 
+              />
+            </Tabs>
+          </Paper>
+          
+          <Box sx={{ my: 2 }}>
+            {view === View.PROJECTS && (
+              <ProjectList 
+                projects={projects} 
+                onEdit={handleProjectEditClick} 
+                onDelete={handleProjectDeleteClick} 
+                onAddNew={handleProjectAddClick} 
+              />
+            )}
+            
+            {view === View.PROJECT_FORM && (
+              <ProjectForm 
+                project={editingProject || undefined} 
+                onSubmit={handleProjectFormSubmit} 
+                onCancel={handleProjectFormCancel} 
+              />
+            )}
+            
+            {view === View.STORIES && (
+              <StoryList 
+                stories={stories} 
+                onEdit={handleStoryEditClick} 
+                onDelete={handleStoryDeleteClick} 
+                onAddNew={handleStoryAddClick}
+                users={getUsersMap()} 
+              />
+            )}
+            
+            {view === View.STORY_FORM && (
+              <StoryForm 
+                story={editingStory || undefined} 
+                onSubmit={handleStoryFormSubmit} 
+                onCancel={handleStoryFormCancel} 
+              />
+            )}
+            
+            {view === View.TASKS && (
+              <TaskKanbanBoard 
+                onAddTask={handleTaskAddClick}
+                onEditTask={handleTaskEditClick}
+                onViewTaskDetails={handleTaskViewClick}
+              />
+            )}
+            
+            {view === View.TASK_FORM && (
+              <TaskForm 
+                task={editingTask || undefined} 
+                onSubmit={handleTaskFormSubmit} 
+                onCancel={handleTaskFormCancel} 
+              />
+            )}
+            
+            {view === View.TASK_DETAILS && viewingTask && (
+              <TaskDetails 
+                task={viewingTask} 
+                onBack={handleTaskDetailsBack}
+                onUpdate={handleTaskDetailsUpdate}
+              />
+            )}
+          </Box>
+          
+          <ProjectSelector 
+            open={isProjectSelectorOpen} 
+            onClose={() => setIsProjectSelectorOpen(false)}
+            onProjectSelected={handleProjectSelected}
+          />
+        </Container>
+      </Box>
+      
+      <Snackbar 
+        open={notification.open} 
+        autoHideDuration={4000} 
+        onClose={handleCloseNotification}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={handleCloseNotification} 
+          severity={notification.severity} 
+          sx={{ 
+            width: '100%', 
+            boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+            '& .MuiAlert-icon': {
+              fontSize: '1.25rem'
+            }
+          }}
+          variant="filled"
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
+    </>
+  );
+}
+
+function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
     </ThemeProvider>
   );
 }

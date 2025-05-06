@@ -26,16 +26,13 @@ export default function StoryForm({ story, onSubmit, onCancel }: StoryFormProps)
   const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
 
   useEffect(() => {
-    // Pobierz użytkowników
     setUsers(userService.getAllUsers());
     
-    // Ustaw domyślnego użytkownika, jeśli nie jest wybrany
     if (!ownerId) {
       const currentUser = userService.getCurrentUser();
       setOwnerId(currentUser.id);
     }
     
-    // Wypełnij formularz, jeśli edytujemy istniejącą historyjkę
     if (story) {
       setName(story.name);
       setDescription(story.description);
