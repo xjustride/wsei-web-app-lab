@@ -1,18 +1,31 @@
 import { useState, useEffect } from 'react';
-import { Box, Typography, Avatar, Chip, Menu, MenuItem } from '@mui/material';
+import { Box, Typography, Avatar, Chip, Menu, MenuItem, Divider, Button } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
+import LogoutIcon from '@mui/icons-material/Logout';
 import { User } from '@/models/User';
 import { userService } from '@/services/UserService';
+import { authService } from '@/services/AuthService';
 import React from 'react';
 
-export default function UserInfo() {
+interface UserInfoProps {
+  onLogout: () => void;
+}
+
+export default function UserInfo({ onLogout }: UserInfoProps) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [users, setUsers] = useState<User[]>([]);
   const open = Boolean(anchorEl);
 
   useEffect(() => {
-    setCurrentUser(userService.getCurrentUser());
+    // Try to get current user from auth service first, then fall back to user service
+    const authUser = authService.getCurrentUser();
+    if (authUser) {
+      setCurrentUser(authUser);
+    } else {
+      setCurrentUser(userService.getCurrentUser());
+    }
+    
     setUsers(userService.getAllUsers());
   }, []);
 
@@ -28,6 +41,11 @@ export default function UserInfo() {
     userService.setCurrentUser(user);
     setCurrentUser(user);
     handleClose();
+  };
+  
+  const handleLogout = () => {
+    handleClose();
+    onLogout();
   };
 
   if (!currentUser) return null;
@@ -81,6 +99,13 @@ export default function UserInfo() {
             {user.firstName} {user.lastName}
           </MenuItem>
         ))}
+        
+        <Divider sx={{ my: 1 }} />
+        
+        <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>
+          <LogoutIcon fontSize="small" sx={{ mr: 1 }} />
+          Wyloguj się
+        </MenuItem>
       </Menu>
     </Box>
   );

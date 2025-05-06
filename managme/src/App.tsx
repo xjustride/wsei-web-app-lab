@@ -13,6 +13,7 @@ import { storyService } from '@/services/StoryService';
 import { userService } from '@/services/UserService';
 import { activeProjectService } from '@/services/ActiveProjectService';
 import { taskService } from '@/services/TaskService';
+import { authService } from '@/services/AuthService';
 import ProjectList from '@/components/ProjectList';
 import ProjectForm from '@/components/ProjectForm';
 import StoryList from '@/components/StoryList';
@@ -22,6 +23,7 @@ import TaskForm from '@/components/TaskForm';
 import TaskDetails from '@/components/TaskDetails';
 import UserInfo from '@/components/UserInfo';
 import ActiveProjectBanner from '@/components/ActiveProjectBanner';
+import LoginForm from '@/components/LoginForm';
 import React from 'react';
 import ProjectSelector from '@/components/ProjectSelector';
 import { debugApp } from '@/debug';
@@ -99,6 +101,7 @@ const theme = createTheme({
 });
 
 enum View {
+  LOGIN,
   PROJECTS,
   PROJECT_FORM,
   STORIES,
@@ -109,7 +112,8 @@ enum View {
 }
 
 function App() {
-  const [view, setView] = useState<View>(View.PROJECTS);
+  const [view, setView] = useState<View>(View.LOGIN);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [stories, setStories] = useState<Story[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -127,8 +131,39 @@ function App() {
   const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
 
   useEffect(() => {
-    loadData();
+    checkAuthStatus();
   }, []);
+
+  const checkAuthStatus = async () => {
+    const isLoggedIn = authService.isAuthenticated();
+    setIsAuthenticated(isLoggedIn);
+    
+    if (isLoggedIn) {
+      const user = await authService.loadCurrentUser();
+      if (user) {
+        setView(View.PROJECTS);
+        loadData();
+      } else {
+        // Token invalid or expired and refresh failed
+        setIsAuthenticated(false);
+        setView(View.LOGIN);
+      }
+    }
+  };
+
+  const handleLoginSuccess = () => {
+    setIsAuthenticated(true);
+    setView(View.PROJECTS);
+    loadData();
+    showNotification('Zalogowano pomyślnie', 'success');
+  };
+
+  const handleLogout = () => {
+    authService.logout();
+    setIsAuthenticated(false);
+    setView(View.LOGIN);
+    showNotification('Wylogowano pomyślnie', 'success');
+  };
 
   const loadData = () => {
     setProjects(storageService.getProjects());
@@ -356,6 +391,35 @@ function App() {
     return 0;
   };
 
+  if (!isAuthenticated) {
+    return (
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <Container maxWidth="sm" sx={{ py: 8 }}>
+          <Box sx={{ mb: 4, textAlign: 'center' }}>
+            <Typography variant="h3" component="h1" gutterBottom color="primary.main" fontWeight={700}>
+              ManagMe
+            </Typography>
+            <Typography variant="subtitle1" color="text.secondary">
+              System zarządzania projektami
+            </Typography>
+          </Box>
+          <LoginForm onLoginSuccess={handleLoginSuccess} />
+        </Container>
+        <Snackbar 
+          open={notification.open} 
+          autoHideDuration={4000} 
+          onClose={handleCloseNotification}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert onClose={handleCloseNotification} severity={notification.severity} sx={{ width: '100%' }}>
+            {notification.message}
+          </Alert>
+        </Snackbar>
+      </ThemeProvider>
+    );
+  }
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
@@ -364,7 +428,9 @@ function App() {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1, color: 'white' }}>
             ManagMe
           </Typography>
-          <UserInfo />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <UserInfo onLogout={handleLogout} />
+          </Box>
         </Toolbar>
       </AppBar>
       
