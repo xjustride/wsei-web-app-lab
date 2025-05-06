@@ -1,13 +1,13 @@
-import { User } from '@/models/User';
+import { User, UserRole } from '@/models/User';
 
 export class UserService {
   private storageKey = 'managme_current_user';
   
-  // Mock użytkownika (bez opcji logowania)
   private mockUsers: User[] = [
-    { id: '1', firstName: 'Jan', lastName: 'Kowalski' },
-    { id: '2', firstName: 'Anna', lastName: 'Nowak' },
-    { id: '3', firstName: 'Piotr', lastName: 'Wiśniewski' },
+    { id: '1', firstName: 'Jan', lastName: 'Kowalski', role: UserRole.ADMIN },
+    { id: '2', firstName: 'Anna', lastName: 'Nowak', role: UserRole.DEVELOPER },
+    { id: '3', firstName: 'Piotr', lastName: 'Wiśniewski', role: UserRole.DEVOPS },
+    { id: '4', firstName: 'Marta', lastName: 'Kowalczyk', role: UserRole.DEVELOPER },
   ];
 
   getCurrentUser(): User {
@@ -17,8 +17,7 @@ export class UserService {
         return JSON.parse(storedUser);
       }
       
-      // Jeśli nie ma zapisanego użytkownika, użyj pierwszego mockowego
-      const defaultUser = this.mockUsers[0];
+      const defaultUser = this.mockUsers.find(u => u.role === UserRole.ADMIN) || this.mockUsers[0];
       this.setCurrentUser(defaultUser);
       return defaultUser;
     } catch (error) {
@@ -33,6 +32,12 @@ export class UserService {
 
   getAllUsers(): User[] {
     return this.mockUsers;
+  }
+
+  getAssignableUsers(): User[] {
+    return this.mockUsers.filter(user => 
+      user.role === UserRole.DEVELOPER || user.role === UserRole.DEVOPS
+    );
   }
 }
 

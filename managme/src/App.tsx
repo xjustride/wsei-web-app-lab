@@ -2,21 +2,24 @@ import { useState, useEffect } from 'react';
 import { 
   Container, CssBaseline, Box, ThemeProvider, 
   createTheme, Snackbar, Alert, AppBar, Toolbar,
-  Typography, Divider, Tab, Tabs, Paper
+  Typography, Tab, Tabs, Paper
 } from '@mui/material';
-// Usuwamy import, który powoduje błąd
-// import './App.css';
 import type { Project, ProjectInput } from '@/models/Project';
 import type { Story, StoryInput } from '@/models/Story';
 import type { User } from '@/models/User';
+import type { Task, TaskInput } from '@/models/Task';
 import { storageService } from '@/services/StorageService';
 import { storyService } from '@/services/StoryService';
 import { userService } from '@/services/UserService';
 import { activeProjectService } from '@/services/ActiveProjectService';
-import ProjectList from './components/ProjectList';
+import { taskService } from '@/services/TaskService';
+import ProjectList from '@/components/ProjectList';
 import ProjectForm from '@/components/ProjectForm';
 import StoryList from '@/components/StoryList';
 import StoryForm from '@/components/StoryForm';
+import TaskKanbanBoard from '@/components/TaskKanbanBoard';
+import TaskForm from '@/components/TaskForm';
+import TaskDetails from '@/components/TaskDetails';
 import UserInfo from '@/components/UserInfo';
 import ActiveProjectBanner from '@/components/ActiveProjectBanner';
 import React from 'react';
@@ -33,28 +36,88 @@ const theme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#3f51b5',
+      main: '#800020', // burgundy
+      dark: '#5d0018',
+      light: '#a04048'
     },
     secondary: {
-      main: '#f50057',
+      main: '#424242', // dark gray
+      dark: '#212121',
+      light: '#757575'
     },
+    background: {
+      default: '#f5f5f5',
+      paper: '#ffffff'
+    },
+    text: {
+      primary: '#212121',
+      secondary: '#424242'
+    },
+    error: {
+      main: '#d32f2f'
+    },
+    warning: {
+      main: '#f57c00',
+      dark: '#e65100'
+    },
+    success: {
+      main: '#388e3c'
+    },
+    info: {
+      main: '#0288d1'
+    }
   },
+  typography: {
+    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+    h4: {
+      fontWeight: 600
+    },
+    h6: {
+      fontWeight: 500
+    }
+  },
+  shape: {
+    borderRadius: 8
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          textTransform: 'none',
+          fontWeight: 500
+        }
+      }
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+        }
+      }
+    }
+  }
 });
 
 enum View {
   PROJECTS,
   PROJECT_FORM,
   STORIES,
-  STORY_FORM
+  STORY_FORM,
+  TASKS,
+  TASK_FORM,
+  TASK_DETAILS
 }
 
 function App() {
   const [view, setView] = useState<View>(View.PROJECTS);
   const [projects, setProjects] = useState<Project[]>([]);
   const [stories, setStories] = useState<Story[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [editingStory, setEditingStory] = useState<Story | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [viewingTask, setViewingTask] = useState<Task | null>(null);
   const [activeProject, setActiveProject] = useState<Project | null>(null);
   const [notification, setNotification] = useState({
     open: false,
@@ -63,7 +126,6 @@ function App() {
   });
   const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
 
-  // Załaduj dane przy uruchomieniu
   useEffect(() => {
     loadData();
   }, []);
@@ -77,10 +139,10 @@ function App() {
     
     if (active) {
       setStories(storyService.getStoriesForProject(active.id));
+      setTasks(taskService.getTasksForProject(active.id));
     }
   };
 
-  // Obsługa projektów
   const handleProjectAddClick = () => {
     setEditingProject(null);
     setView(View.PROJECT_FORM);
@@ -95,7 +157,6 @@ function App() {
     const success = storageService.deleteProject(id);
     
     if (success) {
-      // Jeśli usunięty projekt był aktywny, wyczyść aktywny projekt
       if (activeProject && activeProject.id === id) {
         activeProjectService.clearActiveProject();
         setActiveProject(null);
@@ -112,10 +173,8 @@ function App() {
     if (editingProject) {
       const updated = storageService.updateProject(editingProject.id, projectInput);
       if (updated) {
-        // Odśwież listę projektów
         setProjects(storageService.getProjects());
         
-        // Zaktualizuj aktywny projekt, jeśli był edytowany
         if (activeProject && activeProject.id === editingProject.id) {
           activeProjectService.setActiveProject(updated);
           setActiveProject(updated);
@@ -140,7 +199,6 @@ function App() {
     setEditingProject(null);
   };
 
-  // Obsługa historyjek
   const handleStoryAddClick = () => {
     setEditingStory(null);
     setView(View.STORY_FORM);
@@ -194,7 +252,64 @@ function App() {
     setEditingStory(null);
   };
 
-  // Obsługa aktywnego projektu
+  const handleTaskAddClick = () => {
+    setEditingTask(null);
+    setView(View.TASK_FORM);
+  };
+
+  const handleTaskEditClick = (task: Task) => {
+    setEditingTask(task);
+    setView(View.TASK_FORM);
+  };
+
+  const handleTaskViewClick = (task: Task) => {
+    setViewingTask(task);
+    setView(View.TASK_DETAILS);
+  };
+
+  const handleTaskFormSubmit = (taskInput: TaskInput) => {
+    if (editingTask) {
+      const updated = taskService.updateTask(editingTask.id, taskInput);
+      if (updated) {
+        if (activeProject) {
+          setTasks(taskService.getTasksForProject(activeProject.id));
+        }
+        showNotification('Zadanie zostało zaktualizowane', 'success');
+      } else {
+        showNotification('Nie udało się zaktualizować zadania', 'error');
+      }
+    } else {
+      const newTask = taskService.createTask(taskInput);
+      if (newTask && activeProject) {
+        setTasks(taskService.getTasksForProject(activeProject.id));
+        showNotification('Zadanie zostało utworzone', 'success');
+      } else {
+        showNotification('Nie udało się utworzyć zadania', 'error');
+      }
+    }
+    
+    setView(View.TASKS);
+    setEditingTask(null);
+  };
+
+  const handleTaskFormCancel = () => {
+    setView(View.TASKS);
+    setEditingTask(null);
+  };
+
+  const handleTaskDetailsBack = () => {
+    setView(View.TASKS);
+    setViewingTask(null);
+  };
+
+  const handleTaskDetailsUpdate = (updatedTask: Task) => {
+    setViewingTask(updatedTask);
+    if (activeProject) {
+      setTasks(taskService.getTasksForProject(activeProject.id));
+    }
+    showNotification('Zadanie zostało zaktualizowane', 'success');
+  };
+
   const handleProjectSelect = () => {
     setIsProjectSelectorOpen(true);
   };
@@ -203,12 +318,11 @@ function App() {
     activeProjectService.setActiveProject(project);
     setActiveProject(project);
     setStories(storyService.getStoriesForProject(project.id));
+    setTasks(taskService.getTasksForProject(project.id));
     showNotification(`Aktywny projekt: ${project.name}`, 'success');
-    // Automatycznie przełącz na widok historyjek po wybraniu projektu
     setView(View.STORIES);
   };
 
-  // Powiadomienia
   const showNotification = (message: string, severity: 'success' | 'error') => {
     setNotification({ open: true, message, severity });
   };
@@ -217,7 +331,6 @@ function App() {
     setNotification({ ...notification, open: false });
   };
 
-  // Konwersja listy użytkowników na mapę dla StoryList
   const getUsersMap = () => {
     const usersMap: { [id: string]: string } = {};
     users.forEach(user => {
@@ -226,17 +339,29 @@ function App() {
     return usersMap;
   };
 
-  // Obsługa przełączania między widokami projektów i historyjek
   const handleMainNavChange = (_event: React.SyntheticEvent, newValue: number) => {
-    setView(newValue === 0 ? View.PROJECTS : View.STORIES);
+    if (newValue === 0) {
+      setView(View.PROJECTS);
+    } else if (newValue === 1) {
+      setView(View.STORIES);
+    } else if (newValue === 2) {
+      setView(View.TASKS);
+    }
+  };
+
+  const getTabValue = () => {
+    if (view === View.PROJECTS || view === View.PROJECT_FORM) return 0;
+    if (view === View.STORIES || view === View.STORY_FORM) return 1;
+    if (view === View.TASKS || view === View.TASK_FORM || view === View.TASK_DETAILS) return 2;
+    return 0;
   };
 
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <AppBar position="static">
+      <AppBar position="static" sx={{ bgcolor: 'secondary.dark' }}>
         <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1, color: 'white' }}>
             ManagMe
           </Typography>
           <UserInfo />
@@ -246,17 +371,26 @@ function App() {
       <Container maxWidth="md" sx={{ py: 4 }}>
         <ActiveProjectBanner onSelectProject={handleProjectSelect} activeProject={activeProject} />
         
-        {/* Główne menu nawigacyjne */}
-        <Paper sx={{ mb: 3 }}>
+        <Paper sx={{ mb: 3, overflow: 'hidden' }}>
           <Tabs 
-            value={view < 2 ? 0 : 1} 
+            value={getTabValue()} 
             onChange={handleMainNavChange}
             variant="fullWidth"
+            sx={{
+              '& .MuiTabs-indicator': {
+                backgroundColor: 'primary.main',
+                height: 3
+              }
+            }}
           >
             <Tab label="Projekty" disabled={view === View.PROJECT_FORM} />
             <Tab 
               label="Historyjki" 
-              disabled={!activeProject || view === View.STORY_FORM} 
+              disabled={!activeProject || view === View.PROJECT_FORM || view === View.STORY_FORM} 
+            />
+            <Tab 
+              label="Zadania" 
+              disabled={!activeProject || view === View.PROJECT_FORM || view === View.STORY_FORM || view === View.TASK_FORM} 
             />
           </Tabs>
         </Paper>
@@ -294,6 +428,30 @@ function App() {
               story={editingStory || undefined} 
               onSubmit={handleStoryFormSubmit} 
               onCancel={handleStoryFormCancel} 
+            />
+          )}
+          
+          {view === View.TASKS && (
+            <TaskKanbanBoard 
+              onAddTask={handleTaskAddClick}
+              onEditTask={handleTaskEditClick}
+              onViewTaskDetails={handleTaskViewClick}
+            />
+          )}
+          
+          {view === View.TASK_FORM && (
+            <TaskForm 
+              task={editingTask || undefined} 
+              onSubmit={handleTaskFormSubmit} 
+              onCancel={handleTaskFormCancel} 
+            />
+          )}
+          
+          {view === View.TASK_DETAILS && viewingTask && (
+            <TaskDetails 
+              task={viewingTask} 
+              onBack={handleTaskDetailsBack}
+              onUpdate={handleTaskDetailsUpdate}
             />
           )}
         </Box>
