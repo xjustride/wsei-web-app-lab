@@ -1,11 +1,18 @@
 export enum UserRole {
-  ADMIN = "Administrator",
-  DEVOPS = "DevOps",
-  DEVELOPER = "Developer"
+  ADMIN = 'admin',
+  DEVELOPER = 'developer',
+  VIEWER = 'viewer',
+  GUEST = 'guest' // New role
 }
 
 export interface User {
   id: string;
+  firstName: string;
+  lastName: string;
+  role: UserRole;
+}
+
+export interface UserInput {
   firstName: string;
   lastName: string;
   role: UserRole;

@@ -1,8 +1,13 @@
 import axios from 'axios';
-import { User } from '@/models/User';
+import { User, UserRole } from '@/models/User';
+import { userService, GoogleUserProfile } from './UserService'; // Import GoogleUserProfile
+import { jwtDecode } from 'jwt-decode';
 
 // Define API base URL
 const API_URL = 'http://localhost:3001/api';
+
+const TOKEN_KEY = 'managme_auth_token';
+const USER_KEY = 'managme_current_user';
 
 interface AuthTokens {
   token: string;
@@ -11,6 +16,13 @@ interface AuthTokens {
 
 interface AuthUser extends User {
   token: string;
+}
+
+interface DecodedToken {
+  userId: string;
+  email: string;
+  role: UserRole;
+  exp: number;
 }
 
 export class AuthService {
@@ -94,6 +106,69 @@ export class AuthService {
     }
   }
 
+  loginUser(email: string, password?: string): { token: string; user: User } | null {
+    const user = userService.getUserByEmail(email);
+
+    if (!user) {
+      console.warn('AuthService: Użytkownik nie znaleziony');
+      return null;
+    }
+    
+    // For manually created users, password is required
+    if (user.role !== UserRole.GUEST && (!password || user.password !== password)) {
+        console.warn('AuthService: Nieprawidłowe hasło');
+        return null;
+    }
+    // For GUEST users (potentially created via OAuth), password check might be skipped if they only use OAuth
+    // However, if a GUEST user somehow tries to log in via form, this logic might need adjustment.
+    // Current userService.findOrCreateUserForGoogle doesn't set a password.
+
+    const token = this.generateToken(user);
+    localStorage.setItem(TOKEN_KEY, token);
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+    return { token, user };
+  }
+
+  async loginWithGoogle(profile: GoogleUserProfile): Promise<{ token: string; user: User } | null> {
+    try {
+      const user = userService.findOrCreateUserForGoogle(profile);
+      if (!user) {
+        console.error('AuthService: Nie udało się znaleźć lub utworzyć użytkownika dla profilu Google.');
+        return null;
+      }
+
+      // Guest users created via Google might not have a password.
+      // The token generation should not depend on it.
+      const token = this.generateToken(user);
+      localStorage.setItem(TOKEN_KEY, token);
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
+      return { token, user };
+    } catch (error) {
+      console.error('AuthService: Błąd podczas logowania przez Google:', error);
+      return null;
+    }
+  }
+
+  logout(): void {
+    localStorage.removeItem(this.storageTokenKey);
+    localStorage.removeItem(this.storageRefreshTokenKey);
+    delete axios.defaults.headers.common['Authorization'];
+    this.currentUser = null;
+  }
+
+  isAuthenticated(): boolean {
+    return !!localStorage.getItem(this.storageTokenKey);
+  }
+
+  getCurrentUser(): User | null {
+    return this.currentUser;
+  }
+
+  getAuthHeader(): { Authorization: string } | undefined {
+    const token = localStorage.getItem(this.storageTokenKey);
+    return token ? { Authorization: `Bearer ${token}` } : undefined;
+  }
+
   async loadCurrentUser(): Promise<User | null> {
     try {
       const token = localStorage.getItem(this.storageTokenKey);
@@ -119,24 +194,18 @@ export class AuthService {
     }
   }
 
-  logout(): void {
-    localStorage.removeItem(this.storageTokenKey);
-    localStorage.removeItem(this.storageRefreshTokenKey);
-    delete axios.defaults.headers.common['Authorization'];
-    this.currentUser = null;
+  private generateToken(user: User): string {
+    // Implementation for generating a token
+    return 'generated-token';
   }
 
-  isAuthenticated(): boolean {
-    return !!localStorage.getItem(this.storageTokenKey);
-  }
-
-  getCurrentUser(): User | null {
-    return this.currentUser;
-  }
-
-  getAuthHeader(): { Authorization: string } | undefined {
-    const token = localStorage.getItem(this.storageTokenKey);
-    return token ? { Authorization: `Bearer ${token}` } : undefined;
+  private decodeToken(token: string): DecodedToken | null {
+    try {
+      return jwtDecode<DecodedToken>(token);
+    } catch (error) {
+      console.error('Token decoding error:', error);
+      return null;
+    }
   }
 }
 
