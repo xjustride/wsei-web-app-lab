@@ -5,7 +5,6 @@ import EditIcon from '@mui/icons-material/Edit';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
-import PersonIcon from '@mui/icons-material/Person';
 import { motion } from 'framer-motion';
 import { Task, TaskStatus } from '@/models/Task';
 import { Priority } from '@/models/Story';
@@ -18,9 +17,10 @@ interface TaskCardProps {
   onDelete: () => void;
   onClick: () => void;
   onStatusChange?: (taskId: string, newStatus: TaskStatus) => void;
+  isGuest: boolean; // Add isGuest prop
 }
 
-export default function TaskCard({ task, onEdit, onDelete, onClick, onStatusChange }: TaskCardProps) {
+export default function TaskCard({ task, onEdit, onDelete, onClick, onStatusChange, isGuest }: TaskCardProps) {
   const theme = useTheme();
   
   const priorityColors = {
@@ -67,7 +67,7 @@ export default function TaskCard({ task, onEdit, onDelete, onClick, onStatusChan
   };
 
   const renderStatusButtons = () => {
-    if (!onStatusChange) return null;
+    if (!onStatusChange || isGuest) return null; // Hide for guests
 
     return (
       <Stack direction="row" spacing={1} mt={1.5}>
@@ -170,9 +170,10 @@ export default function TaskCard({ task, onEdit, onDelete, onClick, onStatusChan
               <Tooltip title="Edytuj">
                 <IconButton 
                   size="small" 
+                  disabled={isGuest} // Disable for guests
                   onClick={(e) => {
                     e.stopPropagation();
-                    onEdit();
+                    if (!isGuest) onEdit();
                   }}
                   sx={{ color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }}
                 >
@@ -182,9 +183,10 @@ export default function TaskCard({ task, onEdit, onDelete, onClick, onStatusChan
               <Tooltip title="Usuń">
                 <IconButton 
                   size="small" 
+                  disabled={isGuest} // Disable for guests
                   onClick={(e) => {
                     e.stopPropagation();
-                    onDelete();
+                    if (!isGuest) onDelete();
                   }}
                   sx={{ color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }}
                 >

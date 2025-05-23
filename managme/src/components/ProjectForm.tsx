@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { TextField, Button, Box, Paper, Typography } from '@mui/material';
 import { motion } from 'framer-motion';
-import type { Project, ProjectInput } from '@/models/Project';
+import { Project, ProjectInput } from '@/models/Project';
 
 interface ProjectFormProps {
   project?: Project;

@@ -9,11 +9,15 @@ import {
   Alert, 
   InputAdornment, 
   IconButton,
-  useTheme
+  useTheme,
+  Divider
 } from '@mui/material';
 import { Visibility, VisibilityOff, Login as LoginIcon } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { authService } from '../services/AuthService';
+import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
+import { jwtDecode } from 'jwt-decode'; // To decode the Google credential
+import { GoogleUserProfile } from '@/services/UserService'; // Ensure this path is correct
 
 interface LoginFormProps {
   onLoginSuccess: () => void;
@@ -21,21 +25,21 @@ interface LoginFormProps {
 
 export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
   const theme = useTheme();
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState(''); // Changed from username to email
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [demoUsers, setDemoUsers] = useState<{ username: string, password: string, label: string }[]>([
-    { username: 'admin', password: 'admin123', label: 'Admin' },
-    { username: 'developer', password: 'dev123', label: 'Developer' },
-    { username: 'devops', password: 'ops123', label: 'DevOps' }
+  const [demoUsers, setDemoUsers] = useState<{ username: string, password: string, label: string }[]>([ // username here is for demo button functionality
+    { username: 'admin@example.com', password: 'admin123', label: 'Admin' }, // Assuming demo users also use email
+    { username: 'developer@example.com', password: 'dev123', label: 'Developer' },
+    { username: 'viewer@example.com', password: 'view123', label: 'Viewer' } // Changed devops to viewer for consistency
   ]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username || !password) {
-      setError('Login i hasło są wymagane');
+    if (!email || !password) { // Changed from username
+      setError('Email i hasło są wymagane');
       return;
     }
 
@@ -43,8 +47,9 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
     setError(null);
 
     try {
-      const success = await authService.login(username, password);
-      if (success) {
+      // Assuming authService.login is an alias or wrapper for authService.loginUser which expects email
+      const result = await authService.loginUser(email, password); // Changed from authService.login(username, password)
+      if (result) {
         onLoginSuccess();
       } else {
         setError('Nieprawidłowe dane logowania');
@@ -57,24 +62,64 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
   };
 
   const loginWithDemo = async (demoUser: { username: string, password: string }) => {
-    setUsername(demoUser.username);
+    setEmail(demoUser.username); // This is the email for the demo user
     setPassword(demoUser.password);
     
     setIsLoading(true);
     setError(null);
 
     try {
-      const success = await authService.login(demoUser.username, demoUser.password);
-      if (success) {
+      const result = await authService.loginUser(demoUser.username, demoUser.password); // Using email (demoUser.username)
+      if (result) {
         onLoginSuccess();
       } else {
-        setError('Nieprawidłowe dane logowania');
+        setError('Nieprawidłowe dane logowania dla konta demo');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Wystąpił błąd podczas logowania');
+      setError(err instanceof Error ? err.message : 'Wystąpił błąd podczas logowania demo');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleGoogleLoginSuccess = async (credentialResponse: CredentialResponse) => {
+    setIsLoading(true);
+    setError(null);
+    console.log('Google login success:', credentialResponse);
+    if (credentialResponse.credential) {
+      try {
+        // Decode the JWT token from Google to get user profile information
+        const decodedToken: any = jwtDecode(credentialResponse.credential);
+        
+        const userProfile: GoogleUserProfile = {
+          email: decodedToken.email,
+          name: decodedToken.name,
+          given_name: decodedToken.given_name,
+          family_name: decodedToken.family_name,
+          picture: decodedToken.picture,
+          sub: decodedToken.sub,
+        };
+
+        const result = await authService.loginWithGoogle(userProfile);
+        if (result) {
+          onLoginSuccess();
+        } else {
+          setError('Logowanie przez Google nie powiodło się. Spróbuj ponownie.');
+        }
+      } catch (e) {
+        console.error('Error decoding Google token or logging in:', e);
+        setError('Błąd podczas przetwarzania danych logowania Google.');
+      }
+    } else {
+      setError('Nie otrzymano danych uwierzytelniających od Google.');
+    }
+    setIsLoading(false);
+  };
+
+  const handleGoogleLoginError = () => {
+    console.error('Google login failed');
+    setError('Logowanie przez Google nie powiodło się. Upewnij się, że wyskakujące okienka są dozwolone i spróbuj ponownie.');
+    setIsLoading(false);
   };
 
   return (
@@ -130,10 +175,10 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
 
         <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           <TextField
-            label="Login"
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            label="Email" // Changed from Login
+            type="email" // Changed from text
+            value={email} // Changed from username
+            onChange={(e) => setEmail(e.target.value)} // Changed from setUsername
             variant="outlined"
             fullWidth
             required
@@ -203,6 +248,22 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
           >
             {isLoading ? <CircularProgress size={24} color="inherit" /> : 'Zaloguj się'}
           </Button>
+        </Box>
+
+        <Divider sx={{ my: 3 }}>
+          <Typography variant="caption" color="text.secondary">LUB</Typography>
+        </Divider>
+
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1, mb: 2 }}>
+          <GoogleLogin
+            onSuccess={handleGoogleLoginSuccess}
+            onError={handleGoogleLoginError}
+            useOneTap
+            shape="pill"
+            theme={theme.palette.mode === 'dark' ? "filled_black" : "outline"}
+            size="large"
+            width="300px" // Adjust width as needed
+          />
         </Box>
 
         <Box sx={{ mt: 3, pt: 3, borderTop: `1px solid ${theme.palette.divider}` }}>

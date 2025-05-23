@@ -10,9 +10,10 @@ interface TaskKanbanBoardProps {
   onAddTask: () => void;
   onEditTask: (task: Task) => void;
   onViewTaskDetails: (task: Task) => void;
+  isGuest: boolean; // Add isGuest prop
 }
 
-export default function TaskKanbanBoard({ onAddTask, onEditTask, onViewTaskDetails }: TaskKanbanBoardProps) {
+export default function TaskKanbanBoard({ onAddTask, onEditTask, onViewTaskDetails, isGuest }: TaskKanbanBoardProps) {
   const theme = useTheme();
   const [todoTasks, setTodoTasks] = useState<Task[]>([]);
   const [doingTasks, setDoingTasks] = useState<Task[]>([]);
@@ -38,6 +39,10 @@ export default function TaskKanbanBoard({ onAddTask, onEditTask, onViewTaskDetai
   }, []);
 
   const handleDelete = (taskId: string) => {
+    if (isGuest) {
+      showNotification('Konta gości nie mogą usuwać zadań.', 'warning');
+      return;
+    }
     const success = taskService.deleteTask(taskId);
     if (success) {
       loadTasks();
@@ -48,6 +53,10 @@ export default function TaskKanbanBoard({ onAddTask, onEditTask, onViewTaskDetai
   };
 
   const handleStatusChange = (taskId: string, newStatus: TaskStatus) => {
+    if (isGuest) {
+      showNotification('Konta gości nie mogą zmieniać statusu zadań.', 'warning');
+      return;
+    }
     try {
       const task = taskService.getTaskById(taskId);
       if (!task) {
@@ -239,10 +248,11 @@ export default function TaskKanbanBoard({ onAddTask, onEditTask, onViewTaskDetai
                   >
                     <TaskCard 
                       task={task} 
-                      onEdit={() => onEditTask(task)} 
+                      onEdit={() => onEditTask(task)} // Edit is handled in App.tsx to redirect guest
                       onDelete={() => handleDelete(task.id)} 
                       onClick={() => onViewTaskDetails(task)}
                       onStatusChange={handleStatusChange}
+                      isGuest={isGuest} // Pass isGuest to TaskCard
                     />
                   </motion.div>
                 ))
@@ -287,25 +297,27 @@ export default function TaskKanbanBoard({ onAddTask, onEditTask, onViewTaskDetai
         >
           Tablica zadań
         </Typography>
-        <Button 
-          variant="contained" 
-          startIcon={<AddIcon />}
-          onClick={onAddTask}
-          sx={{ 
-            borderRadius: 8,
-            px: 3,
-            boxShadow: theme.palette.mode === 'dark' 
-              ? '0 4px 8px rgba(128, 0, 32, 0.3)' 
-              : '0 4px 12px rgba(128, 0, 32, 0.2)',
-            '&:hover': {
-              boxShadow: theme.palette.mode === 'dark'
-                ? '0 6px 12px rgba(128, 0, 32, 0.4)'
-                : '0 6px 16px rgba(128, 0, 32, 0.25)',
-            }
-          }}
-        >
-          Dodaj zadanie
-        </Button>
+        {!isGuest && ( // Conditionally render Add button
+          <Button 
+            variant="contained" 
+            startIcon={<AddIcon />}
+            onClick={onAddTask}
+            sx={{ 
+              borderRadius: 8,
+              px: 3,
+              boxShadow: theme.palette.mode === 'dark' 
+                ? '0 4px 8px rgba(128, 0, 32, 0.3)' 
+                : '0 4px 12px rgba(128, 0, 32, 0.2)',
+              '&:hover': {
+                boxShadow: theme.palette.mode === 'dark'
+                  ? '0 6px 12px rgba(128, 0, 32, 0.4)'
+                  : '0 6px 16px rgba(128, 0, 32, 0.25)',
+              }
+            }}
+          >
+            Dodaj zadanie
+          </Button>
+        )}
       </Box>
 
       <Grid container spacing={3} sx={{ minHeight: '70vh' }}>

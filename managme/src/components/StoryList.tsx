@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import React from 'react';
 import { 
-  Box, Typography, Button, Alert, Tabs, Tab, 
-  FormControl, InputLabel, Select, MenuItem, SelectChangeEvent
+  Box, Typography, Button, Paper, Grid, Chip, IconButton, Tooltip, useTheme, Avatar 
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Story, Status } from '@/models/Story';
-import StoryItem from './StoryItem';
-import React from 'react';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import PersonIcon from '@mui/icons-material/Person';
+import { motion } from 'framer-motion';
+import { Story, Priority } from '@/models/Story';
 
 interface StoryListProps {
   stories: Story[];
@@ -15,104 +16,118 @@ interface StoryListProps {
   onDelete: (id: string) => void;
   onAddNew: () => void;
   users: { [id: string]: string };
+  isGuest: boolean; // Add isGuest prop
 }
 
-export default function StoryList({ stories, onEdit, onDelete, onAddNew, users }: StoryListProps) {
-  const [tabValue, setTabValue] = useState(0);
-  const [filter, setFilter] = useState<string>('all');
+export default function StoryList({ stories, onEdit, onDelete, onAddNew, users, isGuest }: StoryListProps) {
+  const theme = useTheme();
 
-  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
-  };
-
-  const handleFilterChange = (event: SelectChangeEvent) => {
-    setFilter(event.target.value);
-  };
-
-  const filteredStories = stories.filter(story => {
-    if (tabValue === 0 && story.status !== Status.TODO) return false;
-    if (tabValue === 1 && story.status !== Status.DOING) return false;
-    if (tabValue === 2 && story.status !== Status.DONE) return false;
-    if (tabValue === 3) { /* wszystkie - brak filtrowania */ }
-    
-    if (filter !== 'all' && story.ownerId !== filter) return false;
-    
-    return true;
-  });
-
-  return (
-    <Box sx={{ width: '100%' }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1">
-          Historyjki
+  if (!stories || stories.length === 0) {
+    return (
+      <Box sx={{ p: 2, textAlign: 'center' }}>
+        <Typography variant="h6" gutterBottom>
+          Brak historyjek do wyświetlenia
         </Typography>
-        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+        {!isGuest && (
           <Button 
             variant="contained" 
-            color="primary" 
-            startIcon={<AddIcon />}
+            startIcon={<AddIcon />} 
             onClick={onAddNew}
+            sx={{ borderRadius: 8, px: 3 }}
           >
-            Dodaj nową historyjkę
+            Dodaj pierwszą historyjkę
           </Button>
-        </motion.div>
-      </Box>
-
-      <Box sx={{ mb: 2 }}>
-        <Tabs 
-          value={tabValue} 
-          onChange={handleTabChange} 
-          variant="fullWidth" 
-          aria-label="story status tabs"
-        >
-          <Tab label={`Do zrobienia`} />
-          <Tab label={`W realizacji`} />
-          <Tab label={`Ukończone`} />
-          <Tab label="Wszystkie" />
-        </Tabs>
-      </Box>
-
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end' }}>
-        <FormControl sx={{ minWidth: 200 }}>
-          <InputLabel id="filter-label">Filtruj po właścicielu</InputLabel>
-          <Select
-            labelId="filter-label"
-            value={filter}
-            label="Filtruj po właścicielu"
-            onChange={handleFilterChange}
-            size="small"
-          >
-            <MenuItem value="all">Wszyscy</MenuItem>
-            {Object.entries(users).map(([id, name]) => (
-              <MenuItem key={id} value={id}>{name}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      </Box>
-
-      <AnimatePresence>
-        {filteredStories.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <Alert severity="info" sx={{ mb: 2 }}>
-              Brak historyjek w tej kategorii. Dodaj nową historyjkę lub zmień filtry.
-            </Alert>
-          </motion.div>
-        ) : (
-          filteredStories.map(story => (
-            <StoryItem 
-              key={story.id} 
-              story={story} 
-              onEdit={onEdit} 
-              onDelete={onDelete}
-              ownerName={users[story.ownerId] || 'Nieznany'}
-            />
-          ))
         )}
-      </AnimatePresence>
+      </Box>
+    );
+  }
+
+  const priorityColors: { [key in Priority]: 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' } = {
+    low: 'success',
+    medium: 'info',
+    high: 'primary',
+    critical: 'error',
+  };
+
+  return (
+    <Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+        <Typography 
+          variant="h4" 
+          component="h1"
+          sx={{ fontWeight: 600 }}
+        >
+          Historyjki użytkownika
+        </Typography>
+        {!isGuest && ( // Conditionally render Add button
+          <Button 
+            variant="contained" 
+            startIcon={<AddIcon />} 
+            onClick={onAddNew}
+            sx={{ borderRadius: 8, px: 3 }}
+          >
+            Dodaj historyjkę
+          </Button>
+        )}
+      </Box>
+
+      {stories.length === 0 ? (
+        <Paper elevation={1} sx={{ p: 2, textAlign: 'center' }}>
+          <Typography variant="body1" color="text.secondary">
+            Brak historyjek w tej kategorii. Dodaj nową historyjkę lub zmień filtry.
+          </Typography>
+        </Paper>
+      ) : (
+        <Grid container spacing={2}>
+          {stories.map(story => (
+            <Grid item xs={12} sm={6} md={4} key={story.id}>
+              <Paper elevation={3} sx={{ p: 2, borderRadius: 2 }}>
+                <Typography variant="h6" component="h2" sx={{ fontWeight: 500 }}>
+                  {story.title}
+                </Typography>
+                <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Avatar sx={{ bgcolor: theme.palette.primary.main, width: 24, height: 24 }}>
+                    <AssignmentIcon fontSize="small" />
+                  </Avatar>
+                  <Typography variant="body2" color="text.secondary">
+                    {story.description}
+                  </Typography>
+                </Box>
+                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Chip 
+                    label={story.priority} 
+                    color={priorityColors[story.priority] as any}
+                    size="small"
+                    sx={{ borderRadius: 4 }}
+                  />
+                  {!isGuest && ( // Conditionally render action buttons
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      <Tooltip title="Edytuj">
+                        <IconButton onClick={() => onEdit(story)} size="small" color="primary">
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Usuń">
+                        <IconButton onClick={() => onDelete(story.id)} size="small" color="error">
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                  )}
+                </Box>
+                {story.assigneeId && users[story.assigneeId] && (
+                  <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <PersonIcon fontSize="small" color="action" />
+                    <Typography variant="body2" color="text.secondary">
+                      Przypisana do: {users[story.assigneeId]}
+                    </Typography>
+                  </Box>
+                )}
+              </Paper>
+            </Grid>
+          ))}
+        </Grid>
+      )}
     </Box>
   );
 }

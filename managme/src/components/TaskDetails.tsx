@@ -24,9 +24,10 @@ interface TaskDetailsProps {
   task: Task;
   onBack: () => void;
   onUpdate: (updatedTask: Task) => void;
+  isGuest: boolean; // Add isGuest prop
 }
 
-export default function TaskDetails({ task, onBack, onUpdate }: TaskDetailsProps) {
+export default function TaskDetails({ task, onBack, onUpdate, isGuest }: TaskDetailsProps) {
   const theme = useTheme();
   const [assignableUsers, setAssignableUsers] = useState<User[]>([]);
   const [selectedAssigneeId, setSelectedAssigneeId] = useState<string>(task.assigneeId || '');
@@ -73,6 +74,10 @@ export default function TaskDetails({ task, onBack, onUpdate }: TaskDetailsProps
   };
 
   const handleAssignTask = async () => {
+    if (isGuest) {
+      setError('Konta gości nie mogą przypisywać zadań.');
+      return;
+    }
     if (!selectedAssigneeId) {
       setError('Wybierz użytkownika, aby przypisać zadanie');
       return;
@@ -97,6 +102,10 @@ export default function TaskDetails({ task, onBack, onUpdate }: TaskDetailsProps
   };
 
   const handleCompleteTask = async () => {
+    if (isGuest) {
+      setError('Konta gości nie mogą kończyć zadań.');
+      return;
+    }
     setLoading(true);
     setError(null);
 
@@ -116,6 +125,11 @@ export default function TaskDetails({ task, onBack, onUpdate }: TaskDetailsProps
   };
 
   const handleStatusChange = async (newStatus: TaskStatus) => {
+    if (isGuest) {
+      setError('Konta gości nie mogą zmieniać statusu zadań.');
+      setLoading(false); // Ensure loading is reset
+      return;
+    }
     setLoading(true);
     setError(null);
 
@@ -197,7 +211,7 @@ export default function TaskDetails({ task, onBack, onUpdate }: TaskDetailsProps
             variant="contained" 
             color="primary" 
             onClick={handleAssignTask}
-            disabled={loading || !selectedAssigneeId}
+            disabled={loading || !selectedAssigneeId || isGuest} // Disable for guest
             startIcon={loading ? <CircularProgress size={20} /> : undefined}
             sx={{ borderRadius: 6 }}
           >
@@ -251,7 +265,7 @@ export default function TaskDetails({ task, onBack, onUpdate }: TaskDetailsProps
             variant="contained" 
             color="success" 
             onClick={handleCompleteTask}
-            disabled={loading}
+            disabled={loading || isGuest} // Disable for guest
             startIcon={loading ? <CircularProgress size={20} /> : <CheckCircleIcon />}
             sx={{ borderRadius: 6 }}
           >
@@ -263,6 +277,8 @@ export default function TaskDetails({ task, onBack, onUpdate }: TaskDetailsProps
   );
 
   const renderStatusButtons = () => {
+    if (isGuest) return null; // Hide all status buttons for guests
+
     if (task.status === TaskStatus.TODO) {
       return (
         <Button 
@@ -615,7 +631,7 @@ export default function TaskDetails({ task, onBack, onUpdate }: TaskDetailsProps
               variant={task.assigneeId ? "outlined" : "contained"} 
               color="primary"
               onClick={() => setAssignMode(true)}
-              disabled={task.status === TaskStatus.DONE}
+              disabled={task.status === TaskStatus.DONE || isGuest} // Disable for guest
               sx={{ borderRadius: 6 }}
             >
               {task.assigneeId ? 'Zmień przypisanie' : 'Przypisz użytkownika'}

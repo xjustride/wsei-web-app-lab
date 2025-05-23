@@ -6,8 +6,9 @@ import {
 import type { Project, ProjectInput } from '@/models/Project';
 import type { Story, StoryInput } from '@/models/Story';
 import type { User } from '@/models/User';
+import { UserRole } from '@/models/User'; // Import UserRole
 import type { Task, TaskInput } from '@/models/Task';
-import { TaskStatus } from '@/models/Task'; // Moved this import to the top
+import { TaskStatus } from '@/models/Task';
 import { storageService } from '@/services/StorageService';
 import { storyService } from '@/services/StoryService';
 import { userService } from '@/services/UserService';
@@ -56,6 +57,7 @@ function AppContent() {
   
   const [view, setView] = useState<View>(View.LOGIN);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null); // Add currentUser state
   const [projects, setProjects] = useState<Project[]>([]);
   const [stories, setStories] = useState<Story[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -82,18 +84,22 @@ function AppContent() {
     
     if (isLoggedIn) {
       const user = await authService.loadCurrentUser();
+      setCurrentUser(user); // Set current user
       if (user) {
         setView(View.PROJECTS);
         loadData();
       } else {
         setIsAuthenticated(false);
+        setCurrentUser(null);
         setView(View.LOGIN);
       }
     }
   };
 
-  const handleLoginSuccess = () => {
+  const handleLoginSuccess = async () => { // Make async to load user
     setIsAuthenticated(true);
+    const user = await authService.loadCurrentUser(); // Reload user after login
+    setCurrentUser(user);
     setView(View.PROJECTS);
     loadData();
     showNotification('Zalogowano pomyślnie', 'success');
@@ -102,6 +108,7 @@ function AppContent() {
   const handleLogout = () => {
     authService.logout();
     setIsAuthenticated(false);
+    setCurrentUser(null); // Clear current user
     setView(View.LOGIN);
     showNotification('Wylogowano pomyślnie', 'success');
   };
@@ -120,16 +127,29 @@ function AppContent() {
   };
 
   const handleProjectAddClick = () => {
+    if (currentUser?.role === UserRole.GUEST) {
+      showNotification('Konta gości nie mogą dodawać projektów.', 'warning');
+      return;
+    }
     setEditingProject(null);
     setView(View.PROJECT_FORM);
   };
 
   const handleProjectEditClick = (project: Project) => {
+    if (currentUser?.role === UserRole.GUEST) {
+      showNotification('Konta gości nie mogą edytować projektów.', 'warning');
+      // Optionally, allow viewing details if there was a project details view
+      return;
+    }
     setEditingProject(project);
     setView(View.PROJECT_FORM);
   };
 
   const handleProjectDeleteClick = (id: string) => {
+    if (currentUser?.role === UserRole.GUEST) {
+      showNotification('Konta gości nie mogą usuwać projektów.', 'warning');
+      return;
+    }
     const success = storageService.deleteProject(id);
     
     if (success) {
@@ -176,16 +196,28 @@ function AppContent() {
   };
 
   const handleStoryAddClick = () => {
+    if (currentUser?.role === UserRole.GUEST) {
+      showNotification('Konta gości nie mogą dodawać historyjek.', 'warning');
+      return;
+    }
     setEditingStory(null);
     setView(View.STORY_FORM);
   };
 
   const handleStoryEditClick = (story: Story) => {
+    if (currentUser?.role === UserRole.GUEST) {
+      showNotification('Konta gości nie mogą edytować historyjek.', 'warning');
+      return;
+    }
     setEditingStory(story);
     setView(View.STORY_FORM);
   };
 
   const handleStoryDeleteClick = (id: string) => {
+    if (currentUser?.role === UserRole.GUEST) {
+      showNotification('Konta gości nie mogą usuwać historyjek.', 'warning');
+      return;
+    }
     const success = storyService.deleteStory(id);
     
     if (success) {
@@ -229,11 +261,22 @@ function AppContent() {
   };
 
   const handleTaskAddClick = () => {
+    if (currentUser?.role === UserRole.GUEST) {
+      showNotification('Konta gości nie mogą dodawać zadań.', 'warning');
+      return;
+    }
     setEditingTask(null);
     setView(View.TASK_FORM);
   };
 
   const handleTaskEditClick = (task: Task) => {
+    if (currentUser?.role === UserRole.GUEST) {
+      // Guests might still view details, but not edit form
+      // For now, let's prevent going to edit form directly
+      showNotification('Konta gości nie mogą edytować zadań. Możesz wyświetlić szczegóły.', 'info');
+      handleTaskViewClick(task); // Redirect to view details instead
+      return;
+    }
     setEditingTask(task);
     setView(View.TASK_FORM);
   };
@@ -279,11 +322,13 @@ function AppContent() {
   };
 
   const handleTaskDetailsUpdate = (updatedTask: Task) => {
+    // This might be called from TaskDetails after a status change attempt
+    // Guest check should happen within TaskDetails for actions like status change
     setViewingTask(updatedTask);
     if (activeProject) {
       setTasks(taskService.getTasksForProject(activeProject.id));
     }
-    showNotification('Zadanie zostało zaktualizowane', 'success');
+    showNotification('Zadanie zostało zaktualizowane', 'success'); // This message might need context if guest tried
   };
 
   const handleProjectSelect = () => {
@@ -392,6 +437,8 @@ function AppContent() {
     );
   }
 
+  const isGuest = currentUser?.role === UserRole.GUEST;
+
   return (
     <>
       <CssBaseline />
@@ -453,13 +500,13 @@ function AppContent() {
                 icon={<DashboardIcon />} 
                 label="Projekty" 
                 iconPosition="start"
-                disabled={view === View.PROJECT_FORM} 
+                disabled={view === View.PROJECT_FORM && !isGuest} // Allow navigation if guest (forms blocked elsewhere)
               />
               <Tab 
                 icon={<AssignmentIcon />}
                 label="Historyjki" 
                 iconPosition="start"
-                disabled={!activeProject || view === View.PROJECT_FORM || view === View.STORY_FORM} 
+                disabled={!activeProject || (view === View.STORY_FORM && !isGuest)} 
               />
               <Tab 
                 icon={<TaskIcon />}
@@ -476,7 +523,7 @@ function AppContent() {
                   </Box>
                 }
                 iconPosition="start"
-                disabled={!activeProject || view === View.PROJECT_FORM || view === View.STORY_FORM || view === View.TASK_FORM} 
+                disabled={!activeProject || (view === View.TASK_FORM && !isGuest)} 
               />
             </Tabs>
           </Paper>
@@ -487,11 +534,12 @@ function AppContent() {
                 projects={projects} 
                 onEdit={handleProjectEditClick} 
                 onDelete={handleProjectDeleteClick} 
-                onAddNew={handleProjectAddClick} 
+                onAddNew={handleProjectAddClick}
+                isGuest={isGuest} // Pass isGuest
               />
             )}
             
-            {view === View.PROJECT_FORM && (
+            {view === View.PROJECT_FORM && !isGuest && ( // Prevent rendering form for guests
               <ProjectForm 
                 project={editingProject || undefined} 
                 onSubmit={handleProjectFormSubmit} 
@@ -505,11 +553,12 @@ function AppContent() {
                 onEdit={handleStoryEditClick} 
                 onDelete={handleStoryDeleteClick} 
                 onAddNew={handleStoryAddClick}
-                users={getUsersMap()} 
+                users={getUsersMap()}
+                isGuest={isGuest} // Pass isGuest
               />
             )}
             
-            {view === View.STORY_FORM && (
+            {view === View.STORY_FORM && !isGuest && ( // Prevent rendering form for guests
               <StoryForm 
                 story={editingStory || undefined} 
                 onSubmit={handleStoryFormSubmit} 
@@ -520,12 +569,13 @@ function AppContent() {
             {view === View.TASKS && (
               <TaskKanbanBoard 
                 onAddTask={handleTaskAddClick}
-                onEditTask={handleTaskEditClick}
+                onEditTask={handleTaskEditClick} // Edit click is handled above to redirect guest
                 onViewTaskDetails={handleTaskViewClick}
+                isGuest={isGuest} // Pass isGuest
               />
             )}
             
-            {view === View.TASK_FORM && (
+            {view === View.TASK_FORM && !isGuest && ( // Prevent rendering form for guests
               <TaskForm 
                 task={editingTask || undefined} 
                 onSubmit={handleTaskFormSubmit} 
@@ -537,7 +587,8 @@ function AppContent() {
               <TaskDetails 
                 task={viewingTask} 
                 onBack={handleTaskDetailsBack}
-                onUpdate={handleTaskDetailsUpdate}
+                onUpdate={handleTaskDetailsUpdate} // onUpdate will be called, but internal actions should be disabled
+                isGuest={isGuest} // Pass isGuest
               />
             )}
           </Box>
