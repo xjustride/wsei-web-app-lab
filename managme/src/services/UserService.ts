@@ -1,37 +1,23 @@
-import { User, UserInput, UserRole } from '@/models/User';
-import { storageService } from './StorageService'; // Assuming StorageService handles user storage
+import { User, UserRole } from '@/models/User';
 
 export interface GoogleUserProfile {
   email: string;
-  name?: string;
-  given_name?: string;
-  family_name?: string;
-  picture?: string;
-  sub: string; // Google's unique ID for the user
+  name: string;
+  given_name: string;
+  family_name: string;
+  picture: string;
+  sub: string;
 }
 
 export class UserService {
-  private storageKey = 'managme_users';
-
-  constructor() {
-    this.initializeDefaultUsers();
-  }
-
-  private initializeDefaultUsers() {
-    const existingUsers = this.getAllUsers();
-    if (existingUsers.length === 0) {
-      // If no users exist, create a default admin user
-      const defaultAdmin: User = {
-        id: '1',
-        firstName: 'Jan',
-        lastName: 'Kowalski',
-        email: 'admin@example.com',
-        role: UserRole.ADMIN,
-        password: 'admin123', // Default password, should be changed on first login
-      };
-      localStorage.setItem(this.storageKey, JSON.stringify([defaultAdmin]));
-    }
-  }
+  private storageKey = 'managme_current_user';
+  
+  private mockUsers: User[] = [
+    { id: '1', firstName: 'Jan', lastName: 'Kowalski', role: UserRole.ADMIN },
+    { id: '2', firstName: 'Anna', lastName: 'Nowak', role: UserRole.DEVELOPER },
+    { id: '3', firstName: 'Piotr', lastName: 'Wiśniewski', role: UserRole.VIEWER },
+    { id: '4', firstName: 'Marta', lastName: 'Kowalczyk', role: UserRole.DEVELOPER },
+  ];
 
   getCurrentUser(): User {
     try {
@@ -40,12 +26,12 @@ export class UserService {
         return JSON.parse(storedUser);
       }
       
-      const defaultUser = this.getAllUsers().find(u => u.role === UserRole.ADMIN) || this.getAllUsers()[0];
+      const defaultUser = this.mockUsers.find(u => u.role === UserRole.ADMIN) || this.mockUsers[0];
       this.setCurrentUser(defaultUser);
       return defaultUser;
     } catch (error) {
       console.error('Błąd podczas pobierania użytkownika:', error);
-      return this.getAllUsers()[0];
+      return this.mockUsers[0];
     }
   }
 
@@ -54,76 +40,37 @@ export class UserService {
   }
 
   getAllUsers(): User[] {
-    return JSON.parse(localStorage.getItem(this.storageKey) || '[]');
-  }
-
-  getUserById(id: string): User | undefined {
-    const users = this.getAllUsers();
-    return users.find(user => user.id === id);
-  }
-
-  getUserByEmail(email: string): User | undefined {
-    const users = this.getAllUsers();
-    return users.find(user => user.email === email);
-  }
-
-  createUser(userInput: UserInput): User | null {
-    try {
-      const users = this.getAllUsers();
-      if (users.find(user => user.email === userInput.email)) {
-        console.warn('Użytkownik o tym adresie email już istnieje.');
-        return null; // Or throw new Error('User with this email already exists');
-      }
-      const newUser: User = {
-        ...userInput,
-        id: crypto.randomUUID(),
-      };
-      localStorage.setItem(this.storageKey, JSON.stringify([...users, newUser]));
-      return newUser;
-    } catch (error) {
-      console.error('Błąd podczas tworzenia użytkownika:', error);
-      return null;
-    }
-  }
-
-  findOrCreateUserForGoogle(profile: GoogleUserProfile): User | null {
-    try {
-      let user = this.getUserByEmail(profile.email);
-      if (user) {
-        // Optionally update user details if they logged in via Google before with a different provider
-        // For now, just return the existing user. If they were not a guest, their role remains.
-        // If they were a guest, their role remains guest.
-        // If a user with this email exists but was created manually with a different role,
-        // we might need a strategy here. For now, we assume email is unique identifier.
-        // If their existing role is not GUEST, we might want to keep it or handle merging.
-        // For simplicity, if user exists, return them. If their role is not GUEST, it's preserved.
-        return user;
-      }
-
-      // If user does not exist, create a new one with GUEST role
-      const users = this.getAllUsers();
-      const newUser: User = {
-        id: crypto.randomUUID(),
-        email: profile.email,
-        firstName: profile.given_name || profile.name?.split(' ')[0] || 'Google',
-        lastName: profile.family_name || profile.name?.split(' ').slice(1).join(' ') || 'User',
-        role: UserRole.GUEST,
-        // password field is not needed for OAuth users if they only log in via Google
-        // If they can also log in with password, this needs more thought.
-        // For now, we assume Google-only login for these users, so no password.
-      };
-      localStorage.setItem(this.storageKey, JSON.stringify([...users, newUser]));
-      return newUser;
-    } catch (error) {
-      console.error('Błąd podczas znajdowania lub tworzenia użytkownika Google:', error);
-      return null;
-    }
+    return this.mockUsers;
   }
 
   getAssignableUsers(): User[] {
-    return this.getAllUsers().filter(user => 
-      user.role === UserRole.DEVELOPER || user.role === UserRole.DEVOPS
+    return this.mockUsers.filter(user => 
+      user.role === UserRole.DEVELOPER || user.role === UserRole.VIEWER
     );
+  }
+
+  createUserFromGoogleProfile(profile: GoogleUserProfile): User {
+    // Generowanie unikalnego ID dla użytkownika Google
+    const id = `google-${profile.sub}`;
+    
+    // Sprawdzamy czy użytkownik Google już istnieje w systemie
+    const existingUser = this.mockUsers.find(user => user.id === id);
+    if (existingUser) {
+      return existingUser;
+    }
+    
+    // Tworzenie nowego użytkownika z rolą 'guest' zgodnie z wymaganiami
+    const newUser: User = {
+      id: id,
+      firstName: profile.given_name,
+      lastName: profile.family_name,
+      role: UserRole.GUEST // Nadajemy rolę GUEST zgodnie z wymaganiami
+    };
+    
+    // Dodajemy użytkownika do mockUsers (w prawdziwej aplikacji zapisalibyśmy do bazy danych)
+    this.mockUsers.push(newUser);
+    
+    return newUser;
   }
 }
 

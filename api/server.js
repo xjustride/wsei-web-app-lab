@@ -88,6 +88,56 @@ app.post('/api/auth/login', (req, res) => {
   });
 });
 
+// Endpoint do logowania przez Google
+app.post('/api/auth/google-login', (req, res) => {
+  const { googleProfile } = req.body;
+  
+  if (!googleProfile || !googleProfile.sub) {
+    return res.status(400).json({ message: 'Nieprawidłowe dane profilu Google' });
+  }
+  
+  // Generowanie unikalnego identyfikatora dla użytkownika Google
+  const userId = `google-${googleProfile.sub}`;
+  
+  // Sprawdzenie czy użytkownik Google już istnieje w systemie
+  let user = users.find(u => u.id === userId);
+  
+  // Jeśli nie istnieje, tworzymy nowego użytkownika
+  if (!user) {
+    user = {
+      id: userId,
+      username: googleProfile.email,
+      firstName: googleProfile.given_name,
+      lastName: googleProfile.family_name,
+      role: 'guest' // Domyślna rola dla kont Google OAuth
+    };
+    
+    // Dodajemy użytkownika do systemu
+    users.push(user);
+  }
+  
+  // Tworzenie tokenu JWT
+  const token = jwt.sign(
+    { id: user.id, username: user.username }, 
+    JWT_SECRET, 
+    { expiresIn: '15m' }
+  );
+  
+  // Tworzenie refresh tokenu
+  const refreshToken = crypto.randomBytes(40).toString('hex');
+  
+  // Zapisanie refresh tokenu
+  refreshTokens.set(refreshToken, {
+    userId: user.id,
+    expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000 // 7 dni
+  });
+  
+  res.status(200).json({
+    token,
+    refreshToken
+  });
+});
+
 app.post('/api/auth/refresh-token', (req, res) => {
   const { refreshToken } = req.body;
   

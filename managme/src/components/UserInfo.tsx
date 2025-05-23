@@ -78,6 +78,18 @@ export default function UserInfo({ onLogout }: UserInfoProps) {
         }}
       >
         <Typography variant="subtitle2" sx={{ px: 2, py: 1, fontWeight: 'bold', color: 'primary.main' }}>
+          Profil użytkownika
+        </Typography>
+        <Box sx={{ px: 2, py: 1 }}>
+          <Typography variant="body2">{currentUser.firstName} {currentUser.lastName}</Typography>
+          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+            Rola: {currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1)}
+          </Typography>
+        </Box>
+        
+        <Divider sx={{ my: 1 }} />
+        
+        <Typography variant="subtitle2" sx={{ px: 2, py: 1, fontWeight: 'bold', color: 'primary.main' }}>
           Zmień użytkownika
         </Typography>
         {users.map((user) => (
