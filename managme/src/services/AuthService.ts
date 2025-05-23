@@ -79,14 +79,9 @@ export class AuthService {
       
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       
-      // Tworzymy/pobieramy użytkownika na podstawie profilu Google
-      const user = userService.createUserFromGoogleProfile(googleProfile);
-      
-      // Ustawiamy jako aktualnego użytkownika
-      this.currentUser = {
-        ...user,
-        token
-      };
+      // Zamiast tworzyć użytkownika lokalnie, pobieramy go z serwera
+      // żeby mieć pewność, że role i uprawnienia są poprawnie ustawione
+      await this.loadCurrentUser();
       
       return true;
     } catch (error) {

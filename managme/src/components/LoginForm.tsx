@@ -31,9 +31,9 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [demoUsers, setDemoUsers] = useState<{ username: string, password: string, label: string }[]>([ // username here is for demo button functionality
-    { username: 'admin@example.com', password: 'admin123', label: 'Admin' }, // Assuming demo users also use email
-    { username: 'developer@example.com', password: 'dev123', label: 'Developer' },
-    { username: 'viewer@example.com', password: 'view123', label: 'Viewer' } // Changed devops to viewer for consistency
+    { username: 'admin', password: 'admin123', label: 'Admin' },
+    { username: 'developer', password: 'dev123', label: 'Developer' },
+    { username: 'devops', password: 'ops123', label: 'DevOps' }
   ]);
 
   const handleSubmit = async (e: React.FormEvent) => {

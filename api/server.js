@@ -109,7 +109,7 @@ app.post('/api/auth/google-login', (req, res) => {
       username: googleProfile.email,
       firstName: googleProfile.given_name,
       lastName: googleProfile.family_name,
-      role: 'guest' // Domyślna rola dla kont Google OAuth
+      role: 'GUEST' // Używamy stałej wartości zgodnej z enumem UserRole.GUEST w kliencie
     };
     
     // Dodajemy użytkownika do systemu

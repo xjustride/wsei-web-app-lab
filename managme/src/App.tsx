@@ -8,6 +8,7 @@ import type { Story, StoryInput } from '@/models/Story';
 import type { User } from '@/models/User';
 import type { Task, TaskInput } from '@/models/Task';
 import { TaskStatus } from '@/models/Task'; // Moved this import to the top
+import { UserRole } from '@/models/User'; // Dodajemy import enumeracji UserRole
 import { storageService } from '@/services/StorageService';
 import { storyService } from '@/services/StoryService';
 import { userService } from '@/services/UserService';
@@ -66,6 +67,7 @@ function AppContent() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [viewingTask, setViewingTask] = useState<Task | null>(null);
   const [activeProject, setActiveProject] = useState<Project | null>(null);
+  const [isCurrentUserGuest, setIsCurrentUserGuest] = useState(false);
   const [notification, setNotification] = useState({
     open: false,
     message: '',
@@ -84,6 +86,7 @@ function AppContent() {
     if (isLoggedIn) {
       const user = await authService.loadCurrentUser();
       if (user) {
+        setIsCurrentUserGuest(user.role === UserRole.GUEST);
         setView(View.PROJECTS);
         loadData();
       } else {
@@ -121,16 +124,28 @@ function AppContent() {
   };
 
   const handleProjectAddClick = () => {
+    if (isCurrentUserGuest) {
+      showNotification('Konta gości nie mogą dodawać projektów', 'warning');
+      return;
+    }
     setEditingProject(null);
     setView(View.PROJECT_FORM);
   };
 
   const handleProjectEditClick = (project: Project) => {
+    if (isCurrentUserGuest) {
+      showNotification('Konta gości nie mogą edytować projektów', 'warning');
+      return;
+    }
     setEditingProject(project);
     setView(View.PROJECT_FORM);
   };
 
   const handleProjectDeleteClick = (id: string) => {
+    if (isCurrentUserGuest) {
+      showNotification('Konta gości nie mogą usuwać projektów', 'warning');
+      return;
+    }
     const success = storageService.deleteProject(id);
     
     if (success) {
@@ -177,16 +192,28 @@ function AppContent() {
   };
 
   const handleStoryAddClick = () => {
+    if (isCurrentUserGuest) {
+      showNotification('Konta gości nie mogą dodawać historyjek', 'warning');
+      return;
+    }
     setEditingStory(null);
     setView(View.STORY_FORM);
   };
 
   const handleStoryEditClick = (story: Story) => {
+    if (isCurrentUserGuest) {
+      showNotification('Konta gości nie mogą edytować historyjek', 'warning');
+      return;
+    }
     setEditingStory(story);
     setView(View.STORY_FORM);
   };
 
   const handleStoryDeleteClick = (id: string) => {
+    if (isCurrentUserGuest) {
+      showNotification('Konta gości nie mogą usuwać historyjek', 'warning');
+      return;
+    }
     const success = storyService.deleteStory(id);
     
     if (success) {
@@ -230,11 +257,19 @@ function AppContent() {
   };
 
   const handleTaskAddClick = () => {
+    if (isCurrentUserGuest) {
+      showNotification('Konta gości nie mogą dodawać zadań', 'warning');
+      return;
+    }
     setEditingTask(null);
     setView(View.TASK_FORM);
   };
 
   const handleTaskEditClick = (task: Task) => {
+    if (isCurrentUserGuest) {
+      showNotification('Konta gości nie mogą edytować zadań', 'warning');
+      return;
+    }
     setEditingTask(task);
     setView(View.TASK_FORM);
   };
@@ -488,7 +523,8 @@ function AppContent() {
                 projects={projects} 
                 onEdit={handleProjectEditClick} 
                 onDelete={handleProjectDeleteClick} 
-                onAddNew={handleProjectAddClick} 
+                onAddNew={handleProjectAddClick}
+                isGuest={isCurrentUserGuest}
               />
             )}
             
@@ -506,7 +542,8 @@ function AppContent() {
                 onEdit={handleStoryEditClick} 
                 onDelete={handleStoryDeleteClick} 
                 onAddNew={handleStoryAddClick}
-                users={getUsersMap()} 
+                users={getUsersMap()}
+                isGuest={isCurrentUserGuest} 
               />
             )}
             
@@ -523,6 +560,7 @@ function AppContent() {
                 onAddTask={handleTaskAddClick}
                 onEditTask={handleTaskEditClick}
                 onViewTaskDetails={handleTaskViewClick}
+                isGuest={isCurrentUserGuest}
               />
             )}
             
@@ -539,6 +577,7 @@ function AppContent() {
                 task={viewingTask} 
                 onBack={handleTaskDetailsBack}
                 onUpdate={handleTaskDetailsUpdate}
+                isGuest={isCurrentUserGuest}
               />
             )}
           </Box>

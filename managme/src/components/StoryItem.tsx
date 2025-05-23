@@ -13,9 +13,10 @@ interface StoryItemProps {
   onEdit: (story: Story) => void;
   onDelete: (id: string) => void;
   ownerName: string;
+  isGuest?: boolean;
 }
 
-export default function StoryItem({ story, onEdit, onDelete, ownerName }: StoryItemProps) {
+export default function StoryItem({ story, onEdit, onDelete, ownerName, isGuest = false }: StoryItemProps) {
   const priorityColors = {
     [Priority.LOW]: 'success',
     [Priority.MEDIUM]: 'primary',
@@ -82,26 +83,28 @@ export default function StoryItem({ story, onEdit, onDelete, ownerName }: StoryI
           </Typography>
         </CardContent>
         <CardActions sx={{ justifyContent: 'flex-end', p: 2, bgcolor: 'rgba(0,0,0,0.02)' }}>
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button 
-              size="small" 
-              startIcon={<EditIcon />} 
-              onClick={() => onEdit(story)}
-              variant="outlined"
-              color="secondary"
-            >
-              Edytuj
-            </Button>
-            <Button 
-              size="small" 
-              startIcon={<DeleteIcon />} 
-              onClick={() => onDelete(story.id)}
-              color="error"
-              variant="outlined"
-            >
-              Usuń
-            </Button>
-          </Box>
+          {!isGuest && (
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button 
+                size="small" 
+                startIcon={<EditIcon />} 
+                onClick={() => onEdit(story)}
+                variant="outlined"
+                color="secondary"
+              >
+                Edytuj
+              </Button>
+              <Button 
+                size="small" 
+                startIcon={<DeleteIcon />} 
+                onClick={() => onDelete(story.id)}
+                color="error"
+                variant="outlined"
+              >
+                Usuń
+              </Button>
+            </Box>
+          )}
         </CardActions>
       </Card>
     </motion.div>

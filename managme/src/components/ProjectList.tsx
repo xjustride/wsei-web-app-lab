@@ -5,6 +5,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { motion } from 'framer-motion';
 import { Project } from '@/models/Project';
+import ProjectItem from './ProjectItem';
 
 interface ProjectListProps {
   projects: Project[];
@@ -106,72 +107,12 @@ export default function ProjectList({ projects, onEdit, onDelete, onAddNew, isGu
         <Grid container spacing={3}>
           {projects.map(project => (
             <Grid item xs={12} sm={6} md={4} key={project.id}>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 20 }}
-                whileHover={{ scale: 1.02 }}
-                transition={{ type: "spring", stiffness: 300, damping: 20 }}
-              >
-                <Paper 
-                  elevation={0} 
-                  sx={{ 
-                    p: 2.5, 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    justifyContent: 'space-between',
-                    height: '100%',
-                    borderRadius: 2,
-                    border: `1px solid ${theme.palette.divider}`,
-                    boxShadow: theme.palette.mode === 'dark' 
-                      ? '0 4px 12px rgba(0, 0, 0, 0.2)' 
-                      : '0 2px 8px rgba(0, 0, 0, 0.05)',
-                    transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
-                    '&:hover': {
-                      transform: 'translateY(-3px)',
-                      boxShadow: theme.palette.mode === 'dark'
-                        ? '0 6px 16px rgba(0, 0, 0, 0.3)'
-                        : '0 4px 12px rgba(0, 0, 0, 0.1)',
-                      borderColor: 'primary.main'
-                    }
-                  }}
-                >
-                  <Box>
-                    <Typography variant="h6" component="h3" gutterBottom fontWeight="500" color="primary.main">
-                      {project.name}
-                    </Typography>
-                    <Typography 
-                      variant="body2" 
-                      color="text.secondary" 
-                      sx={{ 
-                        minHeight: '4.2em', // approx 3 lines
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 3,
-                        WebkitBoxOrient: 'vertical',
-                        mb: 2
-                      }}
-                    >
-                      {project.description}
-                    </Typography>
-                  </Box>
-                  {!isGuest && (
-                    <Box sx={{ mt: 'auto', pt:1, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-                      <Tooltip title="Edytuj">
-                        <IconButton onClick={() => onEdit(project)} size="small" color="primary" sx={{ '&:hover': { bgcolor: 'primary.action.hover' }}}>
-                          <EditIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Usuń">
-                        <IconButton onClick={() => onDelete(project.id)} size="small" color="error" sx={{ '&:hover': { bgcolor: 'error.action.hover' }}}>
-                          <DeleteIcon />
-                        </IconButton>
-                      </Tooltip>
-                    </Box>
-                  )}
-                </Paper>
-              </motion.div>
+              <ProjectItem 
+                project={project} 
+                onEdit={onEdit} 
+                onDelete={onDelete} 
+                isGuest={isGuest} 
+              />
             </Grid>
           ))}
         </Grid>

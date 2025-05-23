@@ -11,9 +11,10 @@ interface ProjectItemProps {
   project: Project;
   onEdit: (project: Project) => void;
   onDelete: (id: string) => void;
+  isGuest?: boolean;
 }
 
-export default function ProjectItem({ project, onEdit, onDelete }: ProjectItemProps) {
+export default function ProjectItem({ project, onEdit, onDelete, isGuest = false }: ProjectItemProps) {
   const theme = useTheme();
   
   const formatDate = (date?: Date) => {
@@ -128,28 +129,30 @@ export default function ProjectItem({ project, onEdit, onDelete }: ProjectItemPr
           bgcolor: theme.palette.mode === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.02)',
           borderTop: `1px solid ${theme.palette.divider}`
         }}>
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button 
-              size="small" 
-              startIcon={<EditIcon />} 
-              onClick={() => onEdit(project)}
-              variant="outlined"
-              color="primary"
-              sx={{ borderRadius: 6 }}
-            >
-              Edytuj
-            </Button>
-            <Button 
-              size="small" 
-              startIcon={<DeleteIcon />} 
-              onClick={() => onDelete(project.id)}
-              color="error"
-              variant="outlined"
-              sx={{ borderRadius: 6 }}
-            >
-              Usuń
-            </Button>
-          </Box>
+          {!isGuest && (
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button 
+                size="small" 
+                startIcon={<EditIcon />} 
+                onClick={() => onEdit(project)}
+                variant="outlined"
+                color="primary"
+                sx={{ borderRadius: 6 }}
+              >
+                Edytuj
+              </Button>
+              <Button 
+                size="small" 
+                startIcon={<DeleteIcon />} 
+                onClick={() => onDelete(project.id)}
+                color="error"
+                variant="outlined"
+                sx={{ borderRadius: 6 }}
+              >
+                Usuń
+              </Button>
+            </Box>
+          )}
         </CardActions>
       </Card>
     </motion.div>
