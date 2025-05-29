@@ -28,44 +28,62 @@ export default function TaskKanbanBoard({ onAddTask, onEditTask, onViewTaskDetai
     severity: 'success'
   });
 
-  const loadTasks = () => {
-    setTodoTasks(taskService.getTasksByStatus(TaskStatus.TODO));
-    setDoingTasks(taskService.getTasksByStatus(TaskStatus.DOING));
-    setDoneTasks(taskService.getTasksByStatus(TaskStatus.DONE));
+  const loadTasks = async () => {
+    try {
+      const [todoTasks, doingTasks, doneTasks] = await Promise.all([
+        taskService.getTasksByStatus(TaskStatus.TODO),
+        taskService.getTasksByStatus(TaskStatus.DOING),
+        taskService.getTasksByStatus(TaskStatus.DONE)
+      ]);
+      
+      setTodoTasks(todoTasks);
+      setDoingTasks(doingTasks);
+      setDoneTasks(doneTasks);
+    } catch (error) {
+      console.error('Error loading tasks:', error);
+      showNotification('Nie udało się załadować zadań', 'error');
+    }
   };
 
   useEffect(() => {
     loadTasks();
   }, []);
 
-  const handleDelete = (taskId: string) => {
+  const handleDelete = async (taskId: string) => {
     if (isGuest) {
       showNotification('Konta gości nie mogą usuwać zadań.', 'warning');
       return;
     }
-    const success = taskService.deleteTask(taskId);
-    if (success) {
-      loadTasks();
-      showNotification('Zadanie zostało usunięte', 'success');
-    } else {
-      showNotification('Nie udało się usunąć zadania', 'error');
+    
+    try {
+      const success = await taskService.deleteTask(taskId);
+      if (success) {
+        loadTasks();
+        showNotification('Zadanie zostało usunięte', 'success');
+      } else {
+        showNotification('Nie udało się usunąć zadania', 'error');
+      }
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      showNotification('Wystąpił błąd podczas usuwania zadania', 'error');
     }
   };
 
-  const handleStatusChange = (taskId: string, newStatus: TaskStatus) => {
+  const handleStatusChange = async (taskId: string, newStatus: TaskStatus) => {
     if (isGuest) {
       showNotification('Konta gości nie mogą zmieniać statusu zadań.', 'warning');
       return;
     }
+    
     try {
-      const task = taskService.getTaskById(taskId);
+      const task = await taskService.getTaskById(taskId);
       if (!task) {
         showNotification('Nie znaleziono zadania', 'error');
         return;
       }
 
       // Require assignee for DOING status
-      if (newStatus === TaskStatus.DOING && !task.assigneeId) {
+      if (newStatus === TaskStatus.DOING && !task.assignedTo) {
         showNotification('Zadanie musi mieć przypisanego użytkownika do rozpoczęcia', 'warning');
         onViewTaskDetails(task); // Open details to assign user
         return;
@@ -77,7 +95,7 @@ export default function TaskKanbanBoard({ onAddTask, onEditTask, onViewTaskDetai
         return;
       }
 
-      const updatedTask = taskService.updateTask(taskId, { status: newStatus });
+      const updatedTask = await taskService.updateTask(taskId, { state: newStatus });
       if (updatedTask) {
         loadTasks();
         

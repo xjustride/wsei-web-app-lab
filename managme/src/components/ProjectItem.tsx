@@ -93,12 +93,14 @@ export default function ProjectItem({ project, onEdit, onDelete, isGuest = false
               </Typography>
               
               <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 1.5 }}>
-                <Chip 
-                  label={`ID: ${project.id.slice(0, 6)}...`} 
-                  size="small" 
-                  variant="outlined"
-                  sx={{ fontSize: '0.7rem' }} 
-                />
+                {project.id && (
+                  <Chip 
+                    label={`ID: ${project.id.slice(0, 6)}...`} 
+                    size="small" 
+                    variant="outlined"
+                    sx={{ fontSize: '0.7rem' }} 
+                  />
+                )}
                 {project.createdAt && (
                   <Chip 
                     icon={<CalendarTodayIcon sx={{ fontSize: '0.85rem !important' }} />}

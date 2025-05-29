@@ -37,8 +37,8 @@ export default function StoryForm({ story, onSubmit, onCancel }: StoryFormProps)
       setName(story.name);
       setDescription(story.description);
       setPriority(story.priority);
-      setStatus(story.status);
-      setOwnerId(story.ownerId);
+      setStatus(story.state);
+      setOwnerId(story.assignedTo || '');
     } else {
       setName('');
       setDescription('');
@@ -80,8 +80,8 @@ export default function StoryForm({ story, onSubmit, onCancel }: StoryFormProps)
         name: name.trim(), 
         description: description.trim(),
         priority,
-        status,
-        ownerId
+        state: status,
+        assignedTo: ownerId || undefined
       });
     }
   };

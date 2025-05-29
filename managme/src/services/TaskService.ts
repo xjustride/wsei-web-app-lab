@@ -1,122 +1,92 @@
 import { Task, TaskInput, TaskStatus, TaskUpdateInput } from '@/models/Task';
 import { activeProjectService } from './ActiveProjectService';
 import { storyService } from './StoryService';
+import { apiService } from './ApiService';
+import { logger } from '@/utils/logger';
 
 export class TaskService {
-  private storageKey = 'managme_tasks';
-
-  getAllTasks(): Task[] {
+  async getAllTasks(): Promise<Task[]> {
     try {
-      const tasks = localStorage.getItem(this.storageKey);
-      if (!tasks) return [];
-      
-      const parsedTasks = JSON.parse(tasks, (key, value) => {
-        if (['createdAt', 'startedAt', 'completedAt'].includes(key) && value) {
-          return new Date(value);
-        }
-        return value;
-      });
-      
-      return parsedTasks;
+      logger.logTaskAction('getAllTasks');
+      const tasks = await apiService.getTasks();
+      logger.logTaskAction('getAllTasks', undefined, { count: tasks.length });
+      return tasks;
     } catch (error) {
-      console.error('Błąd podczas pobierania zadań:', error);
+      logger.logTaskError('getAllTasks', error as Error);
       return [];
     }
   }
 
-  getTasksForStory(storyId: string): Task[] {
-    return this.getAllTasks().filter(task => task.storyId === storyId);
+  async getTasksForStory(storyId: string): Promise<Task[]> {
+    try {
+      logger.logTaskAction('getTasksForStory', undefined, { storyId });
+      const tasks = await apiService.getTasks({ storyId });
+      logger.logTaskAction('getTasksForStory', undefined, { storyId, count: tasks.length });
+      return tasks;
+    } catch (error) {
+      logger.logTaskError('getTasksForStory', error as Error, storyId);
+      return [];
+    }
   }
 
-  getTasksForProject(projectId: string): Task[] {
-    const stories = storyService.getStoriesForProject(projectId);
-    const storyIds = stories.map(story => story.id);
-    return this.getAllTasks().filter(task => storyIds.includes(task.storyId));
+  async getTasksForProject(projectId: string): Promise<Task[]> {
+    try {
+      logger.logTaskAction('getTasksForProject', undefined, { projectId });
+      const tasks = await apiService.getTasks({ projectId });
+      logger.logTaskAction('getTasksForProject', undefined, { projectId, count: tasks.length });
+      return tasks;
+    } catch (error) {
+      logger.logTaskError('getTasksForProject', error as Error, undefined);
+      return [];
+    }
   }
 
-  getTasksForActiveProject(): Task[] {
+  async getTasksForActiveProject(): Promise<Task[]> {
     const activeProject = activeProjectService.getActiveProject();
     if (!activeProject) return [];
     
-    return this.getTasksForProject(activeProject.id);
+    return await this.getTasksForProject(activeProject.id);
   }
 
-  getTaskById(id: string): Task | undefined {
-    return this.getAllTasks().find(task => task.id === id);
-  }
-
-  createTask(taskInput: TaskInput): Task | null {
+  async getTaskById(id: string): Promise<Task | undefined> {
     try {
-      const tasks = this.getAllTasks();
-      const newTask: Task = {
+      return await apiService.getTask(id);
+    } catch (error) {
+      console.error('Błąd podczas pobierania zadania:', error);
+      return undefined;
+    }
+  }
+
+  async createTask(taskInput: TaskInput, storyId: string): Promise<Task | null> {
+    try {
+      const activeProject = activeProjectService.getActiveProject();
+      if (!activeProject) {
+        throw new Error('Brak aktywnego projektu');
+      }
+
+      return await apiService.createTask({
         ...taskInput,
-        id: crypto.randomUUID(),
-        status: TaskStatus.TODO,
-        createdAt: new Date()
-      };
-      
-      localStorage.setItem(this.storageKey, JSON.stringify([...tasks, newTask]));
-      return newTask;
+        project: activeProject.id,
+        story: storyId
+      });
     } catch (error) {
       console.error('Błąd podczas tworzenia zadania:', error);
       return null;
     }
   }
 
-  updateTask(id: string, taskInput: TaskUpdateInput): Task | null {
+  async updateTask(id: string, taskUpdate: TaskUpdateInput): Promise<Task | null> {
     try {
-      const tasks = this.getAllTasks();
-      const index = tasks.findIndex(task => task.id === id);
-      
-      if (index === -1) return null;
-      
-      const existingTask = tasks[index];
-      let updatedTask: Task = { ...existingTask, ...taskInput };
-
-      if (taskInput.status !== undefined && taskInput.status !== existingTask.status) {
-        if (taskInput.status === TaskStatus.DOING && existingTask.status === TaskStatus.TODO) {
-          if (!updatedTask.startedAt) {
-            updatedTask.startedAt = new Date();
-          }
-          
-          if (!updatedTask.assigneeId && !taskInput.assigneeId) {
-            throw new Error('Zadanie musi mieć przypisanego użytkownika przed zmianą statusu na "W trakcie"');
-          }
-        } 
-        else if (taskInput.status === TaskStatus.DONE && existingTask.status !== TaskStatus.DONE) {
-          updatedTask.completedAt = new Date();
-          
-          if (!updatedTask.assigneeId) {
-            throw new Error('Zadanie musi mieć przypisanego użytkownika przed zmianą statusu na "Ukończone"');
-          }
-        }
-      }
-      
-      if (taskInput.assigneeId && !existingTask.assigneeId && existingTask.status === TaskStatus.TODO) {
-        updatedTask.status = TaskStatus.DOING;
-        updatedTask.startedAt = new Date();
-      }
-
-      tasks[index] = updatedTask;
-      localStorage.setItem(this.storageKey, JSON.stringify(tasks));
-      
-      return updatedTask;
+      return await apiService.updateTask(id, taskUpdate);
     } catch (error) {
       console.error('Błąd podczas aktualizacji zadania:', error);
       return null;
     }
   }
 
-  deleteTask(id: string): boolean {
+  async deleteTask(id: string): Promise<boolean> {
     try {
-      const tasks = this.getAllTasks();
-      const filteredTasks = tasks.filter(task => task.id !== id);
-      
-      if (filteredTasks.length === tasks.length) {
-        return false;
-      }
-      
-      localStorage.setItem(this.storageKey, JSON.stringify(filteredTasks));
+      await apiService.deleteTask(id);
       return true;
     } catch (error) {
       console.error('Błąd podczas usuwania zadania:', error);
@@ -124,47 +94,53 @@ export class TaskService {
     }
   }
 
-  assignTask(id: string, userId: string): Task | null {
+  async changeTaskStatus(id: string, newStatus: TaskStatus): Promise<Task | null> {
     try {
-      const task = this.getTaskById(id);
+      const task = await this.getTaskById(id);
       if (!task) return null;
-      
-      return this.updateTask(id, { 
-        assigneeId: userId,
-        status: task.status === TaskStatus.TODO ? TaskStatus.DOING : task.status
-      });
-    } catch (error) {
-      console.error('Błąd podczas przypisywania zadania:', error);
-      return null;
-    }
-  }
 
-  completeTask(id: string, loggedHours?: number): Task | null {
-    try {
-      const task = this.getTaskById(id);
-      if (!task) return null;
-      
-      if (!task.assigneeId) {
-        throw new Error('Nie można zakończyć zadania bez przypisanego użytkownika');
-      }
-      
-      const updateData: TaskUpdateInput = { 
-        status: TaskStatus.DONE
+      const updateData: TaskUpdateInput = {
+        state: newStatus
       };
-      
-      if (loggedHours !== undefined) {
-        updateData.loggedHours = loggedHours;
+
+      // Dodaj timestampy w zależności od statusu
+      const now = new Date();
+      if (newStatus === TaskStatus.DOING && task.state !== TaskStatus.DOING) {
+        updateData.startDate = now;
+      } else if (newStatus === TaskStatus.DONE && task.state !== TaskStatus.DONE) {
+        updateData.endDate = now;
       }
-      
-      return this.updateTask(id, updateData);
+
+      return await this.updateTask(id, updateData);
     } catch (error) {
-      console.error('Błąd podczas kończenia zadania:', error);
+      console.error('Błąd podczas zmiany statusu zadania:', error);
       return null;
     }
   }
 
-  getTasksByStatus(status: TaskStatus): Task[] {
-    return this.getTasksForActiveProject().filter(task => task.status === status);
+  async getTasksByStatus(status: TaskStatus): Promise<Task[]> {
+    try {
+      const tasks = await this.getTasksForActiveProject();
+      // Safeguard against tasks not being an array
+      if (!Array.isArray(tasks)) {
+        logger.error('TaskService.getTasksByStatus: tasks is not an array!', new Error('Tasks is not an array'), 'TaskService', 'getTasksByStatus', { receivedTasks: tasks });
+        return []; // Return empty array or handle error as appropriate
+      }
+      return tasks.filter(task => task.state === status);
+    } catch (error) {
+      console.error('Błąd podczas pobierania zadań według statusu:', error);
+      return [];
+    }
+  }
+
+  async getPendingTasksCount(): Promise<number> {
+    try {
+      const tasks = await this.getTasksByStatus(TaskStatus.TODO);
+      return tasks.length;
+    } catch (error) {
+      console.error('Błąd podczas pobierania liczby oczekujących zadań:', error);
+      return 0;
+    }
   }
 }
 

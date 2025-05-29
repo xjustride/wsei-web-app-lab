@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, Typography, Box, Chip, IconButton, Tooltip, Button, Stack, Avatar, useTheme } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
@@ -22,11 +22,19 @@ interface TaskCardProps {
 
 export default function TaskCard({ task, onEdit, onDelete, onClick, onStatusChange, isGuest }: TaskCardProps) {
   const theme = useTheme();
+  const [story, setStory] = useState<any>(null);
+  
+  useEffect(() => {
+    if (task.story) {
+      storyService.getStoryById(task.story).then(setStory);
+    }
+  }, [task.story]);
   
   const priorityColors = {
     [Priority.LOW]: 'success',
     [Priority.MEDIUM]: 'primary',
-    [Priority.HIGH]: 'error'
+    [Priority.HIGH]: 'warning',
+    [Priority.CRITICAL]: 'error'
   };
 
   const statusColors = {
@@ -35,12 +43,8 @@ export default function TaskCard({ task, onEdit, onDelete, onClick, onStatusChan
     [TaskStatus.DONE]: 'success'
   };
 
-  const assignee = task.assigneeId 
-    ? userService.getAllUsers().find(user => user.id === task.assigneeId)
-    : null;
-    
-  const story = task.storyId
-    ? storyService.getStoryById(task.storyId)
+  const assignee = task.assignedTo 
+    ? userService.getAllUsers().find(user => user.id === task.assignedTo)
     : null;
 
   const handleStatusChange = (e: React.MouseEvent<HTMLButtonElement>, newStatus: TaskStatus) => {
@@ -52,15 +56,15 @@ export default function TaskCard({ task, onEdit, onDelete, onClick, onStatusChan
 
   const getBackgroundColor = () => {
     if (theme.palette.mode === 'dark') {
-      return task.status === TaskStatus.DONE 
+      return task.state === TaskStatus.DONE 
         ? 'rgba(66, 189, 86, 0.1)'
-        : task.status === TaskStatus.DOING
+        : task.state === TaskStatus.DOING
           ? 'rgba(255, 152, 0, 0.1)'
           : 'transparent';
     } else {
-      return task.status === TaskStatus.DONE 
+      return task.state === TaskStatus.DONE 
         ? 'rgba(66, 189, 86, 0.05)'
-        : task.status === TaskStatus.DOING
+        : task.state === TaskStatus.DOING
           ? 'rgba(255, 152, 0, 0.05)'
           : 'transparent';
     }
@@ -71,7 +75,7 @@ export default function TaskCard({ task, onEdit, onDelete, onClick, onStatusChan
 
     return (
       <Stack direction="row" spacing={1} mt={1.5}>
-        {task.status === TaskStatus.TODO && !task.assigneeId && (
+        {task.state === TaskStatus.TODO && !task.assignedTo && (
           <Button
             size="small"
             variant="outlined"
@@ -89,7 +93,7 @@ export default function TaskCard({ task, onEdit, onDelete, onClick, onStatusChan
           </Button>
         )}
         
-        {task.status === TaskStatus.TODO && task.assigneeId && (
+        {task.state === TaskStatus.TODO && task.assignedTo && (
           <Button
             size="small"
             variant="outlined"
@@ -107,7 +111,7 @@ export default function TaskCard({ task, onEdit, onDelete, onClick, onStatusChan
           </Button>
         )}
         
-        {task.status === TaskStatus.DOING && (
+        {task.state === TaskStatus.DOING && (
           <Button
             size="small"
             variant="outlined"
@@ -143,7 +147,7 @@ export default function TaskCard({ task, onEdit, onDelete, onClick, onStatusChan
             : '0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.14)',
           backgroundColor: getBackgroundColor(),
           borderLeft: '4px solid',
-          borderColor: `${theme.palette[statusColors[task.status] as 'primary' | 'secondary' | 'error' | 'warning' | 'info' | 'success'].main}`,
+          borderColor: `${theme.palette[statusColors[task.state] as 'primary' | 'secondary' | 'error' | 'warning' | 'info' | 'success'].main}`,
           transition: 'all 0.2s ease-in-out',
           '&:hover': { 
             boxShadow: theme.palette.mode === 'dark' 
@@ -238,7 +242,7 @@ export default function TaskCard({ task, onEdit, onDelete, onClick, onStatusChan
               <Chip 
                 size="small"
                 icon={<AccessTimeIcon sx={{ fontSize: '0.85rem !important' }} />}
-                label={`${task.estimatedHours}h`}
+                label={`${task.estimatedTime}h`}
                 variant="outlined"
                 sx={{ borderRadius: 4 }}
               />

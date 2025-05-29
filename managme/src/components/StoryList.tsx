@@ -1,6 +1,6 @@
 import React from 'react';
 import { 
-  Box, Typography, Button, Paper, Grid, Chip, IconButton, Tooltip, useTheme, Avatar 
+  Box, Typography, Button, Paper, Grid, Chip, IconButton, Tooltip, useTheme, Avatar, Alert 
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -9,6 +9,7 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import PersonIcon from '@mui/icons-material/Person';
 import { motion } from 'framer-motion';
 import { Story, Priority } from '@/models/Story';
+import { logger } from '@/utils/logger'; // Adjust the import based on your logger's actual path
 
 interface StoryListProps {
   stories: Story[];
@@ -22,7 +23,20 @@ interface StoryListProps {
 export default function StoryList({ stories, onEdit, onDelete, onAddNew, users, isGuest }: StoryListProps) {
   const theme = useTheme();
 
-  if (!stories || stories.length === 0) {
+  // Robust check if stories is an array
+  if (!Array.isArray(stories)) {
+    console.error('StoryList: stories prop is not an array!', stories);
+    logger.error('StoryList: stories prop is not an array!', new Error('Invalid stories data'), 'StoryList', 'render', { receivedStories: stories });
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">
+          Wystąpił błąd podczas ładowania historyjek. Dane historyjek są w nieprawidłowym formacie.
+        </Alert>
+      </Box>
+    );
+  }
+
+  if (stories.length === 0) { // Simplified check now that we know stories is an array
     return (
       <Box sx={{ p: 2, textAlign: 'center' }}>
         <Typography variant="h6" gutterBottom>
@@ -71,63 +85,57 @@ export default function StoryList({ stories, onEdit, onDelete, onAddNew, users, 
         )}
       </Box>
 
-      {stories.length === 0 ? (
-        <Paper elevation={1} sx={{ p: 2, textAlign: 'center' }}>
-          <Typography variant="body1" color="text.secondary">
-            Brak historyjek w tej kategorii. Dodaj nową historyjkę lub zmień filtry.
-          </Typography>
-        </Paper>
-      ) : (
-        <Grid container spacing={2}>
-          {stories.map(story => (
-            <Grid item xs={12} sm={6} md={4} key={story.id}>
-              <Paper elevation={3} sx={{ p: 2, borderRadius: 2 }}>
-                <Typography variant="h6" component="h2" sx={{ fontWeight: 500 }}>
-                  {story.title}
+      {/* No need for stories.length === 0 check here again, as it's handled above.
+          If stories array is empty, the component would have returned earlier. */}
+      <Grid container spacing={2}>
+        {stories.map(story => (
+          <Grid item xs={12} sm={6} md={4} key={story.id}>
+            <Paper elevation={3} sx={{ p: 2, borderRadius: 2 }}>
+              <Typography variant="h6" component="h2" sx={{ fontWeight: 500 }}>
+                {story.name}
+              </Typography>
+              <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Avatar sx={{ bgcolor: theme.palette.primary.main, width: 24, height: 24 }}>
+                  <AssignmentIcon fontSize="small" />
+                </Avatar>
+                <Typography variant="body2" color="text.secondary">
+                  {story.description}
                 </Typography>
-                <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Avatar sx={{ bgcolor: theme.palette.primary.main, width: 24, height: 24 }}>
-                    <AssignmentIcon fontSize="small" />
-                  </Avatar>
-                  <Typography variant="body2" color="text.secondary">
-                    {story.description}
-                  </Typography>
-                </Box>
-                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Chip 
-                    label={story.priority} 
-                    color={priorityColors[story.priority] as any}
-                    size="small"
-                    sx={{ borderRadius: 4 }}
-                  />
-                  {!isGuest && ( // Conditionally render action buttons
-                    <Box sx={{ display: 'flex', gap: 0.5 }}>
-                      <Tooltip title="Edytuj">
-                        <IconButton onClick={() => onEdit(story)} size="small" color="primary">
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Usuń">
-                        <IconButton onClick={() => onDelete(story.id)} size="small" color="error">
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </Box>
-                  )}
-                </Box>
-                {story.assigneeId && users[story.assigneeId] && (
-                  <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <PersonIcon fontSize="small" color="action" />
-                    <Typography variant="body2" color="text.secondary">
-                      Przypisana do: {users[story.assigneeId]}
-                    </Typography>
+              </Box>
+              <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Chip 
+                  label={story.priority} 
+                  color={priorityColors[story.priority] as any}
+                  size="small"
+                  sx={{ borderRadius: 4 }}
+                />
+                {!isGuest && ( // Conditionally render action buttons
+                  <Box sx={{ display: 'flex', gap: 0.5 }}>
+                    <Tooltip title="Edytuj">
+                      <IconButton onClick={() => onEdit(story)} size="small" color="primary">
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Usuń">
+                      <IconButton onClick={() => onDelete(story.id)} size="small" color="error">
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
                   </Box>
                 )}
-              </Paper>
-            </Grid>
-          ))}
-        </Grid>
-      )}
+              </Box>
+              {story.assignedTo && users[story.assignedTo] && (
+                <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <PersonIcon fontSize="small" color="action" />
+                  <Typography variant="body2" color="text.secondary">
+                    Przypisana do: {users[story.assignedTo]}
+                  </Typography>
+                </Box>
+              )}
+            </Paper>
+          </Grid>
+        ))}
+      </Grid>
     </Box>
   );
 }

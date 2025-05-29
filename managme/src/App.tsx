@@ -35,6 +35,7 @@ import HomeIcon from '@mui/icons-material/Home';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import TaskIcon from '@mui/icons-material/Task';
 import AssignmentIcon from '@mui/icons-material/Assignment';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 try {
   debugApp();
@@ -88,7 +89,7 @@ function AppContent() {
       if (user) {
         setIsCurrentUserGuest(user.role === UserRole.GUEST);
         setView(View.PROJECTS);
-        loadData();
+        await loadData();
       } else {
         setIsAuthenticated(false);
         setView(View.LOGIN);
@@ -96,10 +97,10 @@ function AppContent() {
     }
   };
 
-  const handleLoginSuccess = () => {
+  const handleLoginSuccess = async () => {
     setIsAuthenticated(true);
     setView(View.PROJECTS);
-    loadData();
+    await loadData();
     showNotification('Zalogowano pomyślnie', 'success');
   };
 
@@ -110,16 +111,27 @@ function AppContent() {
     showNotification('Wylogowano pomyślnie', 'success');
   };
 
-  const loadData = () => {
-    setProjects(storageService.getProjects());
-    setUsers(userService.getAllUsers());
-    
-    const active = activeProjectService.getActiveProject();
-    setActiveProject(active);
-    
-    if (active) {
-      setStories(storyService.getStoriesForProject(active.id));
-      setTasks(taskService.getTasksForProject(active.id));
+  const loadData = async () => {
+    try {
+      const projectsData = await storageService.getProjects();
+      setProjects(projectsData);
+      
+      const usersData = await userService.getAllUsers();
+      setUsers(usersData);
+      
+      const active = activeProjectService.getActiveProject();
+      setActiveProject(active);
+      
+      if (active) {
+        const storiesData = await storyService.getStoriesForProject(active.id);
+        setStories(storiesData);
+        
+        const tasksData = await taskService.getTasksForProject(active.id);
+        setTasks(tasksData);
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+      showNotification('Błąd podczas ładowania danych', 'error');
     }
   };
 
@@ -141,49 +153,63 @@ function AppContent() {
     setView(View.PROJECT_FORM);
   };
 
-  const handleProjectDeleteClick = (id: string) => {
+  const handleProjectDeleteClick = async (id: string) => {
     if (isCurrentUserGuest) {
       showNotification('Konta gości nie mogą usuwać projektów', 'warning');
       return;
     }
-    const success = storageService.deleteProject(id);
     
-    if (success) {
-      if (activeProject && activeProject.id === id) {
-        activeProjectService.clearActiveProject();
-        setActiveProject(null);
-      }
+    try {
+      const success = await storageService.deleteProject(id);
       
-      setProjects(storageService.getProjects());
-      showNotification('Projekt został usunięty', 'success');
-    } else {
+      if (success) {
+        if (activeProject && activeProject.id === id) {
+          activeProjectService.clearActiveProject();
+          setActiveProject(null);
+        }
+        
+        const projectsData = await storageService.getProjects();
+        setProjects(projectsData);
+        showNotification('Projekt został usunięty', 'success');
+      } else {
+        showNotification('Nie udało się usunąć projektu', 'error');
+      }
+    } catch (error) {
+      console.error('Error deleting project:', error);
       showNotification('Nie udało się usunąć projektu', 'error');
     }
   };
 
-  const handleProjectFormSubmit = (projectInput: ProjectInput) => {
-    if (editingProject) {
-      const updated = storageService.updateProject(editingProject.id, projectInput);
-      if (updated) {
-        setProjects(storageService.getProjects());
-        
-        if (activeProject && activeProject.id === editingProject.id) {
-          activeProjectService.setActiveProject(updated);
-          setActiveProject(updated);
+  const handleProjectFormSubmit = async (projectInput: ProjectInput) => {
+    try {
+      if (editingProject) {
+        const updated = await storageService.updateProject(editingProject.id, projectInput);
+        if (updated) {
+          const projectsData = await storageService.getProjects();
+          setProjects(projectsData);
+          
+          if (activeProject && activeProject.id === editingProject.id) {
+            activeProjectService.setActiveProject(updated);
+            setActiveProject(updated);
+          }
+          
+          showNotification('Projekt został zaktualizowany', 'success');
+        } else {
+          showNotification('Nie udało się zaktualizować projektu', 'error');
         }
-        
-        showNotification('Projekt został zaktualizowany', 'success');
       } else {
-        showNotification('Nie udało się zaktualizować projektu', 'error');
+        const newProject = await storageService.createProject(projectInput);
+        const projectsData = await storageService.getProjects();
+        setProjects(projectsData);
+        showNotification('Projekt został utworzony', 'success');
       }
-    } else {
-      const newProject = storageService.createProject(projectInput);
-      setProjects(storageService.getProjects());
-      showNotification('Projekt został utworzony', 'success');
+      
+      setView(View.PROJECTS);
+      setEditingProject(null);
+    } catch (error) {
+      console.error('Error handling project form:', error);
+      showNotification('Wystąpił błąd podczas zapisywania projektu', 'error');
     }
-    
-    setView(View.PROJECTS);
-    setEditingProject(null);
   };
 
   const handleProjectFormCancel = () => {
@@ -209,46 +235,60 @@ function AppContent() {
     setView(View.STORY_FORM);
   };
 
-  const handleStoryDeleteClick = (id: string) => {
+  const handleStoryDeleteClick = async (id: string) => {
     if (isCurrentUserGuest) {
       showNotification('Konta gości nie mogą usuwać historyjek', 'warning');
       return;
     }
-    const success = storyService.deleteStory(id);
     
-    if (success) {
-      if (activeProject) {
-        setStories(storyService.getStoriesForProject(activeProject.id));
+    try {
+      const success = await storyService.deleteStory(id);
+      
+      if (success) {
+        if (activeProject) {
+          const storiesData = await storyService.getStoriesForProject(activeProject.id);
+          setStories(storiesData);
+        }
+        showNotification('Historyjka została usunięta', 'success');
+      } else {
+        showNotification('Nie udało się usunąć historyjki', 'error');
       }
-      showNotification('Historyjka została usunięta', 'success');
-    } else {
+    } catch (error) {
+      console.error('Error deleting story:', error);
       showNotification('Nie udało się usunąć historyjki', 'error');
     }
   };
 
-  const handleStoryFormSubmit = (storyInput: StoryInput) => {
-    if (editingStory) {
-      const updated = storyService.updateStory(editingStory.id, storyInput);
-      if (updated) {
-        if (activeProject) {
-          setStories(storyService.getStoriesForProject(activeProject.id));
+  const handleStoryFormSubmit = async (storyInput: StoryInput) => {
+    try {
+      if (editingStory) {
+        const updated = await storyService.updateStory(editingStory.id, storyInput);
+        if (updated) {
+          if (activeProject) {
+            const storiesData = await storyService.getStoriesForProject(activeProject.id);
+            setStories(storiesData);
+          }
+          showNotification('Historyjka została zaktualizowana', 'success');
+        } else {
+          showNotification('Nie udało się zaktualizować historyjki', 'error');
         }
-        showNotification('Historyjka została zaktualizowana', 'success');
       } else {
-        showNotification('Nie udało się zaktualizować historyjki', 'error');
+        const newStory = await storyService.createStory(storyInput);
+        if (newStory && activeProject) {
+          const storiesData = await storyService.getStoriesForProject(activeProject.id);
+          setStories(storiesData);
+          showNotification('Historyjka została utworzona', 'success');
+        } else {
+          showNotification('Nie udało się utworzyć historyjki. Sprawdź czy wybrany jest aktywny projekt.', 'error');
+        }
       }
-    } else {
-      const newStory = storyService.createStory(storyInput);
-      if (newStory && activeProject) {
-        setStories(storyService.getStoriesForProject(activeProject.id));
-        showNotification('Historyjka została utworzona', 'success');
-      } else {
-        showNotification('Nie udało się utworzyć historyjki. Sprawdź czy wybrany jest aktywny projekt.', 'error');
-      }
+      
+      setView(View.STORIES);
+      setEditingStory(null);
+    } catch (error) {
+      console.error('Error handling story form:', error);
+      showNotification('Wystąpił błąd podczas zapisywania historyjki', 'error');
     }
-    
-    setView(View.STORIES);
-    setEditingStory(null);
   };
 
   const handleStoryFormCancel = () => {
@@ -279,29 +319,44 @@ function AppContent() {
     setView(View.TASK_DETAILS);
   };
 
-  const handleTaskFormSubmit = (taskInput: TaskInput) => {
-    if (editingTask) {
-      const updated = taskService.updateTask(editingTask.id, taskInput);
-      if (updated) {
-        if (activeProject) {
-          setTasks(taskService.getTasksForProject(activeProject.id));
+  const handleTaskFormSubmit = async (taskInput: TaskInput) => {
+    try {
+      if (editingTask) {
+        const updated = await taskService.updateTask(editingTask.id, taskInput);
+        if (updated) {
+          if (activeProject) {
+            const tasksData = await taskService.getTasksForProject(activeProject.id);
+            setTasks(tasksData);
+          }
+          showNotification('Zadanie zostało zaktualizowane', 'success');
+        } else {
+          showNotification('Nie udało się zaktualizować zadania', 'error');
         }
-        showNotification('Zadanie zostało zaktualizowane', 'success');
       } else {
-        showNotification('Nie udało się zaktualizować zadania', 'error');
+        // For creating a new task, we need a storyId. 
+        // This suggests the task form should include story selection
+        // For now, let's try to get the first available story
+        if (stories.length === 0) {
+          showNotification('Nie można utworzyć zadania - brak dostępnych historyjek', 'error');
+          return;
+        }
+        
+        const newTask = await taskService.createTask(taskInput, stories[0].id);
+        if (newTask && activeProject) {
+          const tasksData = await taskService.getTasksForProject(activeProject.id);
+          setTasks(tasksData);
+          showNotification('Zadanie zostało utworzone', 'success');
+        } else {
+          showNotification('Nie udało się utworzyć zadania', 'error');
+        }
       }
-    } else {
-      const newTask = taskService.createTask(taskInput);
-      if (newTask && activeProject) {
-        setTasks(taskService.getTasksForProject(activeProject.id));
-        showNotification('Zadanie zostało utworzone', 'success');
-      } else {
-        showNotification('Nie udało się utworzyć zadania', 'error');
-      }
+      
+      setView(View.TASKS);
+      setEditingTask(null);
+    } catch (error) {
+      console.error('Error handling task form:', error);
+      showNotification('Wystąpił błąd podczas zapisywania zadania', 'error');
     }
-    
-    setView(View.TASKS);
-    setEditingTask(null);
   };
 
   const handleTaskFormCancel = () => {
@@ -314,10 +369,11 @@ function AppContent() {
     setViewingTask(null);
   };
 
-  const handleTaskDetailsUpdate = (updatedTask: Task) => {
+  const handleTaskDetailsUpdate = async (updatedTask: Task) => {
     setViewingTask(updatedTask);
     if (activeProject) {
-      setTasks(taskService.getTasksForProject(activeProject.id));
+      const tasksData = await taskService.getTasksForProject(activeProject.id);
+      setTasks(tasksData);
     }
     showNotification('Zadanie zostało zaktualizowane', 'success');
   };
@@ -326,13 +382,23 @@ function AppContent() {
     setIsProjectSelectorOpen(true);
   };
 
-  const handleProjectSelected = (project: Project) => {
+  const handleProjectSelected = async (project: Project) => {
     activeProjectService.setActiveProject(project);
     setActiveProject(project);
-    setStories(storyService.getStoriesForProject(project.id));
-    setTasks(taskService.getTasksForProject(project.id));
-    showNotification(`Aktywny projekt: ${project.name}`, 'success');
-    setView(View.STORIES);
+    
+    try {
+      const storiesData = await storyService.getStoriesForProject(project.id);
+      setStories(storiesData);
+      
+      const tasksData = await taskService.getTasksForProject(project.id);
+      setTasks(tasksData);
+      
+      showNotification(`Aktywny projekt: ${project.name}`, 'success');
+      setView(View.STORIES);
+    } catch (error) {
+      console.error('Error loading project data:', error);
+      showNotification('Błąd podczas ładowania danych projektu', 'error');
+    }
   };
 
   const showNotification = (message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
@@ -370,7 +436,12 @@ function AppContent() {
 
   const getTodoTasksCount = () => {
     if (!activeProject) return 0;
-    return taskService.getTasksByStatus(TaskStatus.TODO).length;
+    // Safeguard against tasks not being an array
+    if (!Array.isArray(tasks)) {
+      console.error('App.tsx: tasks state is not an array!', tasks);
+      return 0;
+    }
+    return tasks.filter(task => task.state === TaskStatus.TODO).length;
   };
 
   if (!isAuthenticated) {
@@ -618,7 +689,10 @@ function AppContent() {
 function App() {
   return (
     <ThemeProvider>
-      <AppContent />
+      <CssBaseline />
+      <ErrorBoundary>
+        <AppContent />
+      </ErrorBoundary>
     </ThemeProvider>
   );
 }

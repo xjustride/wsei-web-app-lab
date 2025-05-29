@@ -20,7 +20,8 @@ export default function StoryItem({ story, onEdit, onDelete, ownerName, isGuest 
   const priorityColors = {
     [Priority.LOW]: 'success',
     [Priority.MEDIUM]: 'primary',
-    [Priority.HIGH]: 'error'
+    [Priority.HIGH]: 'warning',
+    [Priority.CRITICAL]: 'error'
   };
 
   const statusColors = {
@@ -42,9 +43,8 @@ export default function StoryItem({ story, onEdit, onDelete, ownerName, isGuest 
         mb: 2, 
         borderRadius: 2, 
         boxShadow: '0 3px 10px rgba(0, 0, 0, 0.08)',
-        borderLeft: '4px solid',
-        borderColor: story.status === Status.DONE ? 'success.main' : 
-                    story.status === Status.DOING ? 'warning.main' : 'secondary.main'
+        borderLeft: '4px solid',        borderColor: story.state === Status.DONE ? 'success.main' :
+                     story.state === Status.DOING ? 'warning.main' : 'secondary.main'
       }}>
         <CardContent>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
@@ -64,9 +64,9 @@ export default function StoryItem({ story, onEdit, onDelete, ownerName, isGuest 
               sx={{ borderWidth: 1.5 }}
             />
             <Chip 
-              label={`Status: ${story.status}`} 
+              label={`Status: ${story.state}`} 
               size="small" 
-              color={statusColors[story.status] as any}
+              color={statusColors[story.state] as any}
               sx={{ fontWeight: 500 }}
             />
             <Chip 

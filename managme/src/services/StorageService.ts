@@ -1,84 +1,46 @@
 import type { Project, ProjectInput } from '@/models/Project';
+import { apiService } from './ApiService';
 
 export class StorageService {
-  private storageKey = 'managme_projects';
-
-  getProjects(): Project[] {
+  async getProjects(): Promise<Project[]> {
     try {
-      const projects = localStorage.getItem(this.storageKey);
-      if (!projects) return [];
-      
-      const parsedProjects = JSON.parse(projects, (key, value) => {
-        if (key === 'createdAt' && value) {
-          return new Date(value);
-        }
-        return value;
-      });
-      
-      return parsedProjects;
+      return await apiService.getProjects();
     } catch (error) {
       console.error('Błąd podczas pobierania projektów:', error);
       return [];
     }
   }
 
-  getProject(id: string): Project | undefined {
-    const projects = this.getProjects();
-    return projects.find(project => project.id === id);
+  async getProject(id: string): Promise<Project | undefined> {
+    try {
+      return await apiService.getProject(id);
+    } catch (error) {
+      console.error('Błąd podczas pobierania projektu:', error);
+      return undefined;
+    }
   }
 
-  createProject(projectInput: ProjectInput): Project {
+  async createProject(projectInput: ProjectInput): Promise<Project> {
     try {
-      const projects = this.getProjects();
-      const newProject: Project = {
-        ...projectInput,
-        id: crypto.randomUUID(),
-        createdAt: new Date()
-      };
-      
-      localStorage.setItem(this.storageKey, JSON.stringify([...projects, newProject]));
-      return newProject;
+      return await apiService.createProject(projectInput);
     } catch (error) {
       console.error('Błąd podczas tworzenia projektu:', error);
       throw new Error('Nie udało się utworzyć projektu');
     }
   }
 
-  updateProject(id: string, projectInput: ProjectInput): Project | null {
+  async updateProject(id: string, projectInput: ProjectInput): Promise<Project | null> {
     try {
-      const projects = this.getProjects();
-      const index = projects.findIndex(project => project.id === id);
-      
-      if (index === -1) return null;
-      
-      const existingProject = projects[index];
-      
-      const updatedProject: Project = {
-        ...projectInput,
-        id,
-        createdAt: existingProject.createdAt
-      };
-      
-      projects[index] = updatedProject;
-      localStorage.setItem(this.storageKey, JSON.stringify(projects));
-      
-      return updatedProject;
+      return await apiService.updateProject(id, projectInput);
     } catch (error) {
       console.error('Błąd podczas aktualizacji projektu:', error);
       return null;
     }
   }
 
-  deleteProject(id: string): boolean {
+  async deleteProject(id: string): Promise<boolean> {
     try {
-      const projects = this.getProjects();
-      const filteredProjects = projects.filter(project => project.id !== id);
-      
-      if (filteredProjects.length === projects.length) {
-        return false;
-      }
-      
-      localStorage.setItem(this.storageKey, JSON.stringify(filteredProjects));
+      await apiService.deleteProject(id);
       return true;
     } catch (error) {
       console.error('Błąd podczas usuwania projektu:', error);

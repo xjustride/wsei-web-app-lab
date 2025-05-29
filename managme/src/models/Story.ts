@@ -1,13 +1,14 @@
 export enum Priority {
-  LOW = "Niski",
-  MEDIUM = "Średni",
-  HIGH = "Wysoki"
+  LOW = "low",
+  MEDIUM = "medium",
+  HIGH = "high",
+  CRITICAL = "critical"
 }
 
 export enum Status {
-  TODO = "Do zrobienia",
-  DOING = "W realizacji",
-  DONE = "Ukończone"
+  TODO = "todo",
+  DOING = "doing", 
+  DONE = "done"
 }
 
 export interface Story {
@@ -15,16 +16,18 @@ export interface Story {
   name: string;
   description: string;
   priority: Priority;
-  projectId: string;
+  state: Status;
+  project: string;
+  assignedTo?: string;
+  createdBy: string;
   createdAt: Date;
-  status: Status;
-  ownerId: string;
+  updatedAt: Date;
 }
 
 export interface StoryInput {
   name: string;
   description: string;
   priority: Priority;
-  status: Status;
-  ownerId: string;
+  state: Status;
+  assignedTo?: string;
 }

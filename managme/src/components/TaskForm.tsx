@@ -21,31 +21,31 @@ export default function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
   const [priority, setPriority] = useState<Priority>(Priority.MEDIUM);
   const [storyId, setStoryId] = useState('');
   const [estimatedHours, setEstimatedHours] = useState(1);
-  const [loggedHours, setLoggedHours] = useState<number | undefined>(undefined);
   
   const [stories, setStories] = useState<Story[]>([]);
   const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
 
   useEffect(() => {
-    const activeProjectStories = storyService.getActiveProjectStories();
-    setStories(activeProjectStories);
+    const loadStories = async () => {
+      const activeProjectStories = await storyService.getActiveProjectStories();
+      setStories(activeProjectStories);
+      
+      if (task) {
+        setName(task.name);
+        setDescription(task.description);
+        setPriority(task.priority);
+        setStoryId(task.story);
+        setEstimatedHours(task.estimatedTime);
+      } else {
+        setName('');
+        setDescription('');
+        setPriority(Priority.MEDIUM);
+        setStoryId(activeProjectStories.length > 0 ? activeProjectStories[0].id : '');
+        setEstimatedHours(1);
+      }
+    };
     
-    if (task) {
-      setName(task.name);
-      setDescription(task.description);
-      setPriority(task.priority);
-      setStoryId(task.storyId);
-      setEstimatedHours(task.estimatedHours);
-      setLoggedHours(task.loggedHours);
-    } else {
-      setName('');
-      setDescription('');
-      setPriority(Priority.MEDIUM);
-      setStoryId(activeProjectStories.length > 0 ? activeProjectStories[0].id : '');
-      setEstimatedHours(1);
-      setLoggedHours(undefined);
-    }
-    
+    loadStories();
     setFormErrors({});
   }, [task]);
 
@@ -73,11 +73,6 @@ export default function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
       isValid = false;
     }
 
-    if (loggedHours !== undefined && loggedHours < 0) {
-      errors.loggedHours = 'Zalogowany czas nie może być ujemny';
-      isValid = false;
-    }
-
     setFormErrors(errors);
     return isValid;
   };
@@ -90,9 +85,8 @@ export default function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
         name: name.trim(), 
         description: description.trim(),
         priority,
-        storyId,
-        estimatedHours,
-        loggedHours
+        story: storyId,
+        estimatedTime: estimatedHours
       });
     }
   };
@@ -190,22 +184,6 @@ export default function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
               error={!!formErrors.estimatedHours}
               helperText={formErrors.estimatedHours}
             />
-            
-            {task && (
-              <TextField
-                label="Zalogowany czas (h)"
-                type="number"
-                value={loggedHours === undefined ? '' : loggedHours}
-                onChange={(e) => {
-                  const value = e.target.value === '' ? undefined : Number(e.target.value);
-                  setLoggedHours(value);
-                }}
-                fullWidth
-                InputProps={{ inputProps: { min: 0 } }}
-                error={!!formErrors.loggedHours}
-                helperText={formErrors.loggedHours}
-              />
-            )}
           </Box>
           
           <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mt: 2 }}>

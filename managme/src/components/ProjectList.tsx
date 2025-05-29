@@ -18,6 +18,19 @@ interface ProjectListProps {
 export default function ProjectList({ projects, onEdit, onDelete, onAddNew, isGuest }: ProjectListProps) {
   const theme = useTheme();
 
+  // Safeguard against projects not being an array
+  if (!Array.isArray(projects)) {
+    console.error('ProjectList: projects prop is not an array!', projects);
+    // Optionally, render an error message or a fallback UI
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">
+          Wystąpił błąd podczas ładowania projektów. Dane projektów są w nieprawidłowym formacie.
+        </Alert>
+      </Box>
+    );
+  }
+
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
@@ -66,6 +79,7 @@ export default function ProjectList({ projects, onEdit, onDelete, onAddNew, isGu
         )}
       </Box>
       
+      {/* Ensure projects is an array before mapping */}
       {projects.length === 0 ? (
         <motion.div
           initial={{ opacity: 0 }}
@@ -105,6 +119,7 @@ export default function ProjectList({ projects, onEdit, onDelete, onAddNew, isGu
         </motion.div>
       ) : (
         <Grid container spacing={3}>
+          {/* projects variable is now guaranteed to be an array here or the component would have returned early */}
           {projects.map(project => (
             <Grid item xs={12} sm={6} md={4} key={project.id}>
               <ProjectItem 

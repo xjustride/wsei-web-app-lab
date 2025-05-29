@@ -1,6 +1,8 @@
 import axios from 'axios';
 import { User } from '@/models/User';
 import { GoogleUserProfile, userService } from '@/services/UserService';
+import { apiService } from './ApiService';
+import { logger } from '@/utils/logger';
 
 // Define API base URL
 const API_URL = 'http://localhost:3001/api';
@@ -46,6 +48,8 @@ export class AuthService {
 
   async login(username: string, password: string): Promise<boolean> {
     try {
+      logger.logAuthAction('LOGIN_ATTEMPT', undefined, { username });
+      
       const response = await axios.post(`${API_URL}/auth/login`, { 
         username, 
         password 
@@ -57,18 +61,22 @@ export class AuthService {
       localStorage.setItem(this.storageRefreshTokenKey, refreshToken);
       
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      apiService.setToken(token);
       
       await this.loadCurrentUser();
       
+      logger.logAuthAction('LOGIN_SUCCESS', this.currentUser?.id, { username });
       return true;
     } catch (error) {
-      console.error('Login error:', error);
+      logger.logAuthError('LOGIN_FAILED', error instanceof Error ? error : new Error('Unknown error'), { username });
       return false;
     }
  }
 
   async loginWithGoogle(googleProfile: GoogleUserProfile): Promise<boolean> {
     try {
+      logger.logAuthAction('GOOGLE_LOGIN_ATTEMPT', undefined, { email: googleProfile.email });
+      
       // Przekazujemy dane z Google do API
       const response = await axios.post(`${API_URL}/auth/google-login`, { googleProfile });
       
@@ -78,20 +86,24 @@ export class AuthService {
       localStorage.setItem(this.storageRefreshTokenKey, refreshToken);
       
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      apiService.setToken(token);
       
       // Zamiast tworzyć użytkownika lokalnie, pobieramy go z serwera
       // żeby mieć pewność, że role i uprawnienia są poprawnie ustawione
       await this.loadCurrentUser();
       
+      logger.logAuthAction('GOOGLE_LOGIN_SUCCESS', this.currentUser?.id, { email: googleProfile.email });
       return true;
     } catch (error) {
-      console.error('Google login error:', error);
+      logger.logAuthError('GOOGLE_LOGIN_FAILED', error instanceof Error ? error : new Error('Unknown error'), { email: googleProfile.email });
       return false;
     }
   }
 
   async refreshToken(): Promise<boolean> {
     try {
+      logger.logAuthAction('REFRESH_TOKEN_ATTEMPT');
+      
       const refreshToken = localStorage.getItem(this.storageRefreshTokenKey);
       
       if (!refreshToken) {
@@ -109,9 +121,10 @@ export class AuthService {
       
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       
+      logger.logAuthAction('REFRESH_TOKEN_SUCCESS');
       return true;
     } catch (error) {
-      console.error('Refresh token error:', error);
+      logger.logAuthError('REFRESH_TOKEN_FAILED', error instanceof Error ? error : new Error('Unknown error'));
       // Clear auth
       this.logout();
       return false;
@@ -144,9 +157,13 @@ export class AuthService {
   }
 
   logout(): void {
+    const userId = this.currentUser?.id;
+    logger.logAuthAction('LOGOUT', userId);
+    
     localStorage.removeItem(this.storageTokenKey);
     localStorage.removeItem(this.storageRefreshTokenKey);
     delete axios.defaults.headers.common['Authorization'];
+    apiService.clearTokens();
     this.currentUser = null;
   }
 

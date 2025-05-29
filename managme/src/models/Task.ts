@@ -1,9 +1,9 @@
 import { Priority } from './Story';
 
 export enum TaskStatus {
-  TODO = "Do zrobienia",
-  DOING = "W trakcie",
-  DONE = "Ukończone"
+  TODO = "todo",
+  DOING = "doing",
+  DONE = "done"
 }
 
 export interface Task {
@@ -11,31 +11,36 @@ export interface Task {
   name: string;
   description: string;
   priority: Priority;
-  storyId: string;
-  estimatedHours: number;
-  loggedHours?: number;
-  status: TaskStatus;
+  project: string;
+  story: string;
+  estimatedTime: number;
+  state: TaskStatus;
+  assignedTo?: string;
+  createdBy: string;
+  startDate?: Date;
+  endDate?: Date;
   createdAt: Date;
-  startedAt?: Date;
-  completedAt?: Date;
-  assigneeId?: string;
+  updatedAt: Date;
 }
 
 export interface TaskInput {
   name: string;
   description: string;
   priority: Priority;
-  storyId: string;
-  estimatedHours: number;
-  loggedHours?: number;
+  story: string;
+  estimatedTime: number;
+  assignedTo?: string;
+  startDate?: Date;
+  endDate?: Date;
 }
 
 export interface TaskUpdateInput {
   name?: string;
   description?: string;
   priority?: Priority;
-  estimatedHours?: number;
-  loggedHours?: number;
-  status?: TaskStatus;
-  assigneeId?: string;
+  estimatedTime?: number;
+  state?: TaskStatus;
+  assignedTo?: string;
+  startDate?: Date;
+  endDate?: Date;
 }
