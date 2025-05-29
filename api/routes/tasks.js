@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Task = require('../models/Task');
+const Story = require('../models/Story');
 const logger = require('../utils/logger');
 
 // GET /api/tasks - Pobierz wszystkie zadania (z filtrami)
@@ -256,6 +257,37 @@ router.delete('/:id', async (req, res) => {
       userId: req.user?.id 
     });
     res.status(500).json({ message: 'Błąd podczas usuwania zadania', error: error.message });
+  }
+});
+
+// POST /api/tasks/:id/stories - add a story to a task
+router.post('/:id/stories', async (req, res) => {
+  const taskId = req.params.id;
+  const { storyId } = req.body;
+  logger.debug('Adding story to task', { taskId, storyId, userId: req.user?.id });
+  try {
+    const story = await Story.findById(storyId);
+    if (!story) {
+      logger.warn('Story not found for assignment', { storyId, taskId });
+      return res.status(404).json({ message: 'Historia nie została znaleziona' });
+    }
+    const task = await Task.findById(taskId);
+    if (!task) {
+      logger.warn('Task not found for story assignment', { taskId });
+      return res.status(404).json({ message: 'Zadanie nie zostało znalezione' });
+    }
+    task.stories = task.stories || [];
+    if (!task.stories.includes(storyId)) {
+      task.stories.push(storyId);
+      await task.save();
+      logger.logDatabase('update', 'tasks', true, { taskId, storyId, userId: req.user?.id });
+    }
+    const populated = await Task.findById(taskId)
+      .populate('stories', 'name description state');
+    res.json(populated);
+  } catch (error) {
+    logger.logDatabase('update', 'tasks', false, { error: error.message, taskId, storyId });
+    res.status(500).json({ message: 'Błąd podczas dodawania historii do zadania', error: error.message });
   }
 });
 
