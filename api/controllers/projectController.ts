@@ -1,5 +1,4 @@
 import { Request, Response } from 'express';
-import { v4 as uuidv4 } from 'uuid';
 import Project from '../models/Project';
 
 export const getUserProjects = async (req: Request, res: Response) => {

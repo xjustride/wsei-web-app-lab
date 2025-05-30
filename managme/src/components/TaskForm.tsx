@@ -31,16 +31,16 @@ export default function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
       setStories(activeProjectStories);
       
       if (task) {
-        setName(task.name);
-        setDescription(task.description);
+        setName(task.name || '');
+        setDescription(task.description || '');
         setPriority(task.priority);
-        setStoryId(task.story);
-        setEstimatedHours(task.estimatedTime);
+        setStoryId(task.story || '');
+        setEstimatedHours(task.estimatedTime || 1);
       } else {
         setName('');
         setDescription('');
         setPriority(Priority.MEDIUM);
-        setStoryId(activeProjectStories.length > 0 ? activeProjectStories[0].id : '');
+        setStoryId(activeProjectStories.length > 0 ? (activeProjectStories[0].id || '') : '');
         setEstimatedHours(1);
       }
     };
@@ -82,9 +82,13 @@ export default function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
     
     if (validateForm()) {
       onSubmit({ 
+        nazwa: name.trim(),
         name: name.trim(), 
+        opis: description.trim(),
         description: description.trim(),
         priority,
+        projectId: '', // Will be set by the service
+        storyId: storyId,
         story: storyId,
         estimatedTime: estimatedHours
       });

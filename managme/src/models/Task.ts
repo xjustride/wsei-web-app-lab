@@ -6,17 +6,33 @@ export enum TaskStatus {
   DONE = "done"
 }
 
+export interface TimeLog {
+  _id: string;
+  userId: string;
+  timeSpent: number; // in minutes
+  description?: string;
+  loggedAt: Date;
+}
+
 export interface Task {
-  id: string;
-  name: string;
-  description: string;
+  _id: string;
+  id: string; // Always present for compatibility
+  nazwa: string; // Name in Polish as per backend
+  name: string; // Always present for compatibility
+  opis?: string; // Description in Polish as per backend
+  description?: string; // For compatibility with frontend code
   priority: Priority;
-  project: string;
-  story: string;
+  projectId: string;
+  project: string; // Always present for compatibility
+  storyId: string;
+  story: string; // Always present for compatibility
   estimatedTime: number;
-  state: TaskStatus;
-  assignedTo?: string;
+  status: TaskStatus;
+  state: TaskStatus; // Always present for compatibility
+  assignedUserId?: string;
+  assignedTo?: string; // For compatibility with frontend code
   createdBy: string;
+  timeLogs: TimeLog[];
   startDate?: Date;
   endDate?: Date;
   createdAt: Date;
@@ -24,23 +40,32 @@ export interface Task {
 }
 
 export interface TaskInput {
-  name: string;
-  description: string;
+  nazwa: string;
+  name?: string; // For compatibility
+  opis?: string;
+  description?: string; // For compatibility
   priority: Priority;
-  story: string;
+  projectId: string;
+  storyId: string;
+  story?: string; // For compatibility
   estimatedTime: number;
-  assignedTo?: string;
+  assignedUserId?: string;
+  assignedTo?: string; // For compatibility
   startDate?: Date;
   endDate?: Date;
 }
 
 export interface TaskUpdateInput {
-  name?: string;
-  description?: string;
+  nazwa?: string;
+  name?: string; // For compatibility
+  opis?: string;
+  description?: string; // For compatibility
   priority?: Priority;
   estimatedTime?: number;
-  state?: TaskStatus;
-  assignedTo?: string;
+  status?: TaskStatus;
+  state?: TaskStatus; // For compatibility
+  assignedUserId?: string;
+  assignedTo?: string; // For compatibility
   startDate?: Date;
   endDate?: Date;
 }

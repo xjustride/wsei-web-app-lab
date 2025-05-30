@@ -26,6 +26,43 @@ export class PermissionService {
   }
 
   /**
+   * Sprawdza czy użytkownik ma uprawnienia developera (może modyfikować kod i zadania)
+   */
+  isDeveloper(): boolean {
+    const user = authService.getCurrentUser();
+    if (!user) return false;
+    
+    return user.role === UserRole.DEVELOPER || user.role === UserRole.ADMIN;
+  }
+
+  /**
+   * Sprawdza czy użytkownik ma uprawnienia DevOps (może zarządzać infrastrukturą)
+   */
+  isDevOps(): boolean {
+    const user = authService.getCurrentUser();
+    if (!user) return false;
+    
+    return user.role === UserRole.DEVOPS || user.role === UserRole.ADMIN;
+  }
+
+  /**
+   * Sprawdza czy użytkownik może zarządzać projektami (tworzyć, modyfikować, usuwać)
+   */
+  canManageProjects(): boolean {
+    const user = authService.getCurrentUser();
+    if (!user) return false;
+    
+    return user.role === UserRole.ADMIN || user.role === UserRole.DEVELOPER;
+  }
+
+  /**
+   * Sprawdza czy użytkownik może zarządzać użytkownikami
+   */
+  canManageUsers(): boolean {
+    return this.isAdmin();
+  }
+
+  /**
    * Sprawdza czy użytkownik ma uprawnienia do przeglądania zasobów
    * Wszyscy zalogowani użytkownicy mają takie uprawnienie
    */

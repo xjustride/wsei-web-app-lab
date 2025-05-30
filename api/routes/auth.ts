@@ -64,11 +64,18 @@ router.post('/login', async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
-    const accessToken = generateAccessToken(user);
-    const refreshToken = await generateRefreshToken(user.id); // Use user.id
+    
+    const tokenPayload = {
+      id: user._id.toString(),
+      email: user.email,
+      role: user.role
+    };
+    
+    const accessToken = generateAccessToken(tokenPayload);
+    const refreshToken = await generateRefreshToken(user._id.toString());
     res.json({
       user: {
-        id: user.id, // Use user.id
+        id: user._id.toString(), // Use user._id.toString()
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
@@ -102,11 +109,18 @@ router.post('/register', async (req, res) => {
       role
     });
     await user.save();
-    const accessToken = generateAccessToken(user);
-    const refreshToken = await generateRefreshToken(user.id); // Use user.id
+    
+    const tokenPayload = {
+      id: user._id.toString(),
+      email: user.email,
+      role: user.role
+    };
+    
+    const accessToken = generateAccessToken(tokenPayload);
+    const refreshToken = await generateRefreshToken(user._id.toString());
     res.status(201).json({
       user: {
-        id: user.id, // Use user.id
+        id: user._id.toString(),
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
@@ -122,9 +136,17 @@ router.post('/register', async (req, res) => {
 // Google OAuth login endpoint
 router.post('/google', async (req, res) => {
   try {
+    console.log('Google OAuth request body:', req.body);
+    console.log('Google OAuth request headers:', req.headers);
+    
     const { token } = req.body;
     
+    console.log('Extracted token:', token);
+    console.log('Token type:', typeof token);
+    console.log('Token length:', token?.length);
+    
     if (!token) {
+      console.log('No token provided');
       return res.status(400).json({ message: 'Google token is required' });
     }
 
@@ -171,8 +193,14 @@ router.post('/google', async (req, res) => {
     }
 
     // Generate tokens
-    const accessToken = generateAccessToken(user);
-    const refreshToken = await generateRefreshToken(user.id);
+    const tokenPayload = {
+      id: user._id.toString(),
+      email: user.email,
+      role: user.role
+    };
+    
+    const accessToken = generateAccessToken(tokenPayload);
+    const refreshToken = await generateRefreshToken(user._id.toString());
 
     res.json({
       user: {
@@ -209,7 +237,14 @@ router.post('/refresh-token', async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-    const accessToken = generateAccessToken(user);
+    
+    const tokenPayload = {
+      id: user._id.toString(),
+      email: user.email,
+      role: user.role
+    };
+    
+    const accessToken = generateAccessToken(tokenPayload);
     const newRefreshToken = await generateRefreshToken(userId);
     await RefreshToken.deleteOne({ token: refreshToken });
     res.json({ accessToken, refreshToken: newRefreshToken });

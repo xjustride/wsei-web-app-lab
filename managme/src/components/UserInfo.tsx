@@ -18,14 +18,19 @@ export default function UserInfo({ onLogout }: UserInfoProps) {
   const open = Boolean(anchorEl);
 
   useEffect(() => {
-    const authUser = authService.getCurrentUser();
-    if (authUser) {
-      setCurrentUser(authUser);
-    } else {
-      setCurrentUser(userService.getCurrentUser());
-    }
+    const loadData = async () => {
+      const authUser = authService.getCurrentUser();
+      if (authUser) {
+        setCurrentUser(authUser);
+      } else {
+        setCurrentUser(userService.getCurrentUser());
+      }
+      
+      const usersData = await userService.getAllUsers();
+      setUsers(usersData);
+    };
     
-    setUsers(userService.getAllUsers());
+    loadData();
   }, []);
 
   const handleClick = (event: React.MouseEvent<HTMLDivElement>) => {

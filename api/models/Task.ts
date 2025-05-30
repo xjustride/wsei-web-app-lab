@@ -1,56 +1,146 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
-export interface ITimeLog extends Document {
+export interface ITimeLog {
+  _id?: mongoose.Types.ObjectId;
   date: Date;
   hours: number;
   comment?: string;
-  userId?: mongoose.Types.ObjectId; // Optional: to track who logged the time
-  // createdAt will be handled by timestamps on the sub-document schema if needed
+  userId?: mongoose.Types.ObjectId;
+  createdAt?: Date;
 }
 
-const TimeLogSchema = new Schema<ITimeLog>(
-  {
-    date: { type: Date, required: true },
-    hours: { type: Number, required: true, min: 0.1 },
-    comment: { type: String },
-    userId: { type: Schema.Types.ObjectId, ref: 'User' },
+const timeLogSchema = new Schema<ITimeLog>({
+  date: {
+    type: Date,
+    required: true
   },
-  { timestamps: { createdAt: true, updatedAt: false } } // Add createdAt for each log entry
-);
+  hours: {
+    type: Number,
+    required: true,
+    min: 0.1,
+    max: 24
+  },
+  comment: {
+    type: String,
+    trim: true,
+    maxlength: 500
+  },
+  userId: {
+    type: Schema.Types.ObjectId,
+    ref: 'User'
+  }
+}, {
+  timestamps: { createdAt: true, updatedAt: false },
+  toJSON: {
+    transform(doc, ret) {
+      ret.id = ret._id;
+      delete ret._id;
+      delete ret.__v;
+      return ret;
+    }
+  }
+});
 
 export interface ITask extends Document {
+  _id: mongoose.Types.ObjectId;
+  projectId: mongoose.Types.ObjectId;
+  storyId: mongoose.Types.ObjectId;
   name: string;
   description?: string;
   status: 'todo' | 'in-progress' | 'done';
-  priority: 'low' | 'medium' | 'high';
-  projectId: mongoose.Types.ObjectId;
-  storyId: mongoose.Types.ObjectId;
+  priority: 'low' | 'medium' | 'high' | 'critical';
   assignedUserId?: mongoose.Types.ObjectId;
   estimatedTime?: number; // in hours
-  loggedHours?: number; // Actual time spent, in hours - this will be the sum of timeLogs
-  timeLogs?: ITimeLog[]; // Array to store individual time log entries
+  loggedHours: number;
+  timeLogs: ITimeLog[];
   startDate?: Date;
   endDate?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
 
-const TaskSchema = new Schema<ITask>(
-  {
-    name: { type: String, required: true },
-    description: { type: String },
-    status: { type: String, enum: ['todo', 'in-progress', 'done'], default: 'todo' },
-    priority: { type: String, enum: ['low', 'medium', 'high'], default: 'medium' },
-    projectId: { type: Schema.Types.ObjectId, ref: 'Project', required: true },
-    storyId: { type: Schema.Types.ObjectId, ref: 'Story', required: true },
-    assignedUserId: { type: Schema.Types.ObjectId, ref: 'User' },
-    estimatedTime: { type: Number }, // in hours
-    loggedHours: { type: Number, default: 0 },
-    timeLogs: [TimeLogSchema], // Embed the TimeLog schema
-    startDate: { type: Date },
-    endDate: { type: Date },
+const taskSchema = new Schema<ITask>({
+  projectId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Project',
+    required: true
   },
-  { timestamps: true } // Adds createdAt and updatedAt automatically
-);
+  storyId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Story',
+    required: true
+  },
+  name: {
+    type: String,
+    required: true,
+    trim: true,
+    maxlength: 200
+  },
+  description: {
+    type: String,
+    trim: true,
+    maxlength: 2000
+  },
+  status: {
+    type: String,
+    enum: ['todo', 'in-progress', 'done'],
+    default: 'todo',
+    required: true
+  },
+  priority: {
+    type: String,
+    enum: ['low', 'medium', 'high', 'critical'],
+    default: 'medium',
+    required: true
+  },
+  assignedUserId: {
+    type: Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  estimatedTime: {
+    type: Number,
+    min: 0,
+    default: 0
+  },
+  loggedHours: {
+    type: Number,
+    min: 0,
+    default: 0
+  },
+  timeLogs: [timeLogSchema],
+  startDate: {
+    type: Date
+  },
+  endDate: {
+    type: Date
+  }
+}, {
+  timestamps: true,
+  toJSON: {
+    transform(doc, ret) {
+      ret.id = ret._id;
+      delete ret._id;
+      delete ret.__v;
+      return ret;
+    }
+  }
+});
 
-export default mongoose.model<ITask>('Task', TaskSchema);
+// Indexes for performance
+taskSchema.index({ projectId: 1 });
+taskSchema.index({ storyId: 1 });
+taskSchema.index({ assignedUserId: 1 });
+taskSchema.index({ status: 1 });
+taskSchema.index({ priority: 1 });
+taskSchema.index({ projectId: 1, status: 1 });
+taskSchema.index({ storyId: 1, status: 1 });
+
+// Pre-save middleware to update loggedHours
+taskSchema.pre('save', function(next) {
+  if (this.isModified('timeLogs')) {
+    this.loggedHours = this.timeLogs.reduce((total, log) => total + log.hours, 0);
+  }
+  next();
+});
+
+export default mongoose.model<ITask>('Task', taskSchema);

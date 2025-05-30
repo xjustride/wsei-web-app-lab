@@ -1,5 +1,8 @@
-import { User, UserRole } from '@/models/User';
+import { User, UserRole, AuthProvider } from '@/models/User';
 import { logger } from '@/utils/logger';
+import axios from 'axios';
+
+const API_BASE_URL = 'http://localhost:3001/api';
 
 export interface GoogleUserProfile {
   email: string;
@@ -8,17 +11,19 @@ export interface GoogleUserProfile {
   family_name: string;
   picture: string;
   sub: string;
+  token?: string; // Google token for backend verification
 }
 
 export class UserService {
   private storageKey = 'managme_current_user';
-  
-  private mockUsers: User[] = [
-    { id: '1', firstName: 'Jan', lastName: 'Kowalski', email: 'jan.kowalski@example.com', role: UserRole.ADMIN },
-    { id: '2', firstName: 'Anna', lastName: 'Nowak', email: 'anna.nowak@example.com', role: UserRole.DEVELOPER },
-    { id: '3', firstName: 'Piotr', lastName: 'Wiśniewski', email: 'piotr.wisniewski@example.com', role: UserRole.VIEWER },
-    { id: '4', firstName: 'Marta', lastName: 'Kowalczyk', email: 'marta.kowalczyk@example.com', role: UserRole.DEVELOPER },
-  ];
+
+  // Helper function to normalize user data for frontend compatibility
+  private normalizeUser(user: any): User {
+    return {
+      ...user,
+      id: user._id || user.id
+    };
+  }
 
   getCurrentUser(): User | null {
     try {
@@ -29,17 +34,11 @@ export class UserService {
         return user;
       }
       
-      // Fallback to a default user if nothing in localStorage - this might be an initial setup or demo case
-      // In a real app, this would likely redirect to login or handle unauthenticated state
-      logger.warn('No user in localStorage, returning default admin user for mock purposes', 'UserService', 'getCurrentUser');
-      const defaultUser = this.mockUsers.find(u => u.role === UserRole.ADMIN) || this.mockUsers[0];
-      if (defaultUser) {
-        this.setCurrentUser(defaultUser); // Optionally store this default user
-      }
-      return defaultUser || null;
+      logger.warn('No user in localStorage', 'UserService', 'getCurrentUser');
+      return null;
     } catch (error) {
       logger.error('Error fetching current user', error instanceof Error ? error : new Error(String(error)), 'UserService', 'getCurrentUser');
-      return null; // Return null on error to avoid app crash
+      return null;
     }
   }
 
@@ -52,71 +51,125 @@ export class UserService {
     }
   }
 
-  getAllUsers(): User[] {
-    logger.info('Fetching all mock users', 'UserService', 'getAllUsers');
-    return this.mockUsers;
+  async getAllUsers(): Promise<User[]> {
+    try {
+      logger.info('Fetching all users from API', 'UserService', 'getAllUsers');
+      const response = await axios.get(`${API_BASE_URL}/users`);
+      return (response.data as any[]).map(user => this.normalizeUser(user));
+    } catch (error) {
+      logger.error('Error fetching users', error instanceof Error ? error : new Error(String(error)), 'UserService', 'getAllUsers');
+      return [];
+    }
   }
 
-  getAssignableUsers(): User[] {
-    logger.info('Fetching assignable mock users (Developers & Viewers)', 'UserService', 'getAssignableUsers');
-    return this.mockUsers.filter(user => 
-      user.role === UserRole.DEVELOPER || user.role === UserRole.VIEWER
-    );
+  async getUsersByRole(role: UserRole): Promise<User[]> {
+    try {
+      logger.info(`Fetching users by role: ${role}`, 'UserService', 'getUsersByRole');
+      const response = await axios.get(`${API_BASE_URL}/users/role/${role}`);
+      return (response.data as any[]).map(user => this.normalizeUser(user));
+    } catch (error) {
+      logger.error('Error fetching users by role', error instanceof Error ? error : new Error(String(error)), 'UserService', 'getUsersByRole');
+      return [];
+    }
+  }
+
+  async getAssignableUsers(): Promise<User[]> {
+    try {
+      logger.info('Fetching assignable users (Developers & DevOps)', 'UserService', 'getAssignableUsers');
+      const allUsers = await this.getAllUsers();
+      return allUsers.filter(user => 
+        user.role === UserRole.DEVELOPER || user.role === UserRole.DEVOPS
+      );
+    } catch (error) {
+      logger.error('Error fetching assignable users', error instanceof Error ? error : new Error(String(error)), 'UserService', 'getAssignableUsers');
+      return [];
+    }
   }
 
   createUserFromGoogleProfile(profile: GoogleUserProfile): User {
-    // Generowanie unikalnego ID dla użytkownika Google
-    const id = `google-${profile.sub}`;
-    
-    // Sprawdzamy czy użytkownik Google już istnieje w systemie
-    const existingUser = this.mockUsers.find(user => user.id === id);
-    if (existingUser) {
-      return existingUser;
-    }
-    
-    // Tworzenie nowego użytkownika z rolą 'guest' zgodnie z wymaganiami
-    const newUser: User = {
-      id: id,
+    // This method is kept for compatibility but actual user creation 
+    // is handled by the backend during Google authentication
+    const normalizedUser: User = {
+      _id: `google-${profile.sub}`,
+      id: `google-${profile.sub}`,
       firstName: profile.given_name,
       lastName: profile.family_name,
-      role: UserRole.GUEST // Nadajemy rolę GUEST zgodnie z wymaganiami
+      email: profile.email,
+      role: UserRole.GUEST,
+      avatar: profile.picture,
+      authProvider: AuthProvider.GOOGLE,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
     
-    // Dodajemy użytkownika do mockUsers (w prawdziwej aplikacji zapisalibyśmy do bazy danych)
-    this.mockUsers.push(newUser);
-    
-    return newUser;
+    return normalizedUser;
   }
 
-  // Example of a method that might interact with an API in a real scenario
   async fetchUserById(userId: string): Promise<User | null> {
-    logger.info(`Attempting to fetch user by ID: ${userId}`, 'UserService', 'fetchUserById');
-    // This is a mock implementation. In a real app, this would call an API.
-    const user = this.mockUsers.find(u => u.id === userId);
-    if (user) {
+    try {
+      logger.info(`Attempting to fetch user by ID: ${userId}`, 'UserService', 'fetchUserById');
+      const response = await axios.get(`${API_BASE_URL}/users/${userId}`);
+      const user = this.normalizeUser(response.data);
       logger.info(`User found: ${userId}`, 'UserService', 'fetchUserById', { userId });
       return user;
+    } catch (error) {
+      logger.warn(`User not found: ${userId}`, 'UserService', 'fetchUserById', { userId });
+      return null;
     }
-    logger.warn(`User not found: ${userId}`, 'UserService', 'fetchUserById', { userId });
-    return null;
   }
   
-  // Example of updating a user (mock)
-  async updateUser(userId: string, userData: Partial<User>): Promise<User | null> {
-    logger.info(`Attempting to update user: ${userId}`, 'UserService', 'updateUser', { userId, userData });
-    const userIndex = this.mockUsers.findIndex(u => u.id === userId);
-    if (userIndex > -1) {
-      this.mockUsers[userIndex] = { ...this.mockUsers[userIndex], ...userData };
-      logger.info(`User updated: ${userId}`, 'UserService', 'updateUser', { userId });
+  async createUser(userData: { firstName: string; lastName: string; email: string; role: UserRole; password?: string }): Promise<User | null> {
+    try {
+      logger.info('Creating new user', 'UserService', 'createUser', { email: userData.email });
+      const response = await axios.post(`${API_BASE_URL}/users`, userData);
+      const user = this.normalizeUser(response.data);
+      logger.info(`User created: ${user.id}`, 'UserService', 'createUser', { userId: user.id });
+      return user;
+    } catch (error) {
+      logger.error('Error creating user', error instanceof Error ? error : new Error(String(error)), 'UserService', 'createUser');
+      return null;
+    }
+  }
+
+  async updateUserRole(userId: string, role: UserRole): Promise<User | null> {
+    try {
+      logger.info(`Attempting to update user role: ${userId}`, 'UserService', 'updateUserRole', { userId, role });
+      const response = await axios.put(`${API_BASE_URL}/users/${userId}/role`, { role });
+      const user = this.normalizeUser(response.data);
+      logger.info(`User role updated: ${userId}`, 'UserService', 'updateUserRole', { userId });
+      
       // If the updated user is the current user, update it in localStorage as well
       const currentUser = this.getCurrentUser();
-      if (currentUser && currentUser.id === userId) {
-        this.setCurrentUser(this.mockUsers[userIndex]);
+      if (currentUser && (currentUser.id === userId || currentUser._id === userId)) {
+        this.setCurrentUser(user);
       }
-      return this.mockUsers[userIndex];
+      return user;
+    } catch (error) {
+      logger.error('Error updating user role', error instanceof Error ? error : new Error(String(error)), 'UserService', 'updateUserRole', { userId });
+      return null;
     }
-    logger.warn(`User not found for update: ${userId}`, 'UserService', 'updateUser', { userId });
-    return null;
+  }
+
+  async deleteUser(userId: string): Promise<boolean> {
+    try {
+      logger.info(`Attempting to delete user: ${userId}`, 'UserService', 'deleteUser', { userId });
+      await axios.delete(`${API_BASE_URL}/users/${userId}`);
+      logger.info(`User deleted: ${userId}`, 'UserService', 'deleteUser', { userId });
+      return true;
+    } catch (error) {
+      logger.error('Error deleting user', error instanceof Error ? error : new Error(String(error)), 'UserService', 'deleteUser', { userId });
+      return false;
+    }
+  }
+
+  clearCurrentUser(): void {
+    try {
+      localStorage.removeItem(this.storageKey);
+      logger.info('Current user cleared from localStorage', 'UserService', 'clearCurrentUser');
+    } catch (error) {
+      logger.error('Error clearing current user', error instanceof Error ? error : new Error(String(error)), 'UserService', 'clearCurrentUser');
+    }
   }
 }
 

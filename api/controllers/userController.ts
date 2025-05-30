@@ -1,10 +1,19 @@
 import { Request, Response } from 'express';
-import User from '../models/User';
+import User, { IUser } from '../models/User';
+import bcrypt from 'bcryptjs';
+
+// Extend Request interface to include user
+interface AuthenticatedRequest extends Request {
+  user?: {
+    id: string;
+    role: string;
+  };
+}
 
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
     const users = await User.find()
-      .select('firstName lastName email role avatar createdAt')
+      .select('firstName lastName email role avatar isActive lastLogin createdAt')
       .lean();
     res.json(users);
   } catch (error) {
@@ -16,7 +25,7 @@ export const getUserById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const user = await User.findById(id)
-      .select('firstName lastName email role avatar createdAt')
+      .select('firstName lastName email role avatar isActive lastLogin createdAt')
       .lean();
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -30,7 +39,7 @@ export const getUserById = async (req: Request, res: Response) => {
 export const getUsersByRole = async (req: Request, res: Response) => {
   try {
     const { role } = req.params;
-    const users = await User.find({ role })
+    const users = await User.find({ role, isActive: true })
       .select('firstName lastName email role avatar createdAt')
       .lean();
     res.json(users);
@@ -41,12 +50,13 @@ export const getUsersByRole = async (req: Request, res: Response) => {
 
 export const createUser = async (req: Request, res: Response) => {
   try {
-    const { firstName, lastName, email, role, password } = req.body;
+    const { firstName, lastName, email, role, password, authProvider = 'local' } = req.body;
 
     if (!firstName || !lastName || !email || !role) {
       return res.status(400).json({ message: 'Wszystkie pola są wymagane' });
     }
 
+    // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'Użytkownik z tym adresem email już istnieje' });

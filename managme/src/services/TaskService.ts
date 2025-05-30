@@ -66,8 +66,8 @@ export class TaskService {
 
       return await apiService.createTask({
         ...taskInput,
-        project: activeProject.id,
-        story: storyId
+        projectId: activeProject.id,
+        storyId: storyId
       });
     } catch (error) {
       console.error('Błąd podczas tworzenia zadania:', error);

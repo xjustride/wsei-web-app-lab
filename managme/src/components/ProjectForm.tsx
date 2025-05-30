@@ -48,6 +48,7 @@ export default function ProjectForm({ project, onSubmit, onCancel }: ProjectForm
     
     if (validateForm()) {
       onSubmit({ 
+        nazwa: name.trim(),
         name: name.trim(), 
         description: description.trim() 
       });

@@ -1,33 +1,39 @@
+export interface ProjectMember {
+  userId: string;
+  assignedAt: Date;
+}
+
+export interface ProjectViewer {
+  userId: string;
+  assignedAt: Date;
+}
+
 export interface Project {
-  id: string;
-  name: string;
-  description: string;
-  status: 'active' | 'completed' | 'on-hold' | 'cancelled';
-  priority: 'low' | 'medium' | 'high' | 'critical';
-  startDate: Date;
-  endDate?: Date;
-  owner: {
-    id: string;
+  _id: string;
+  id: string; // Always present for compatibility
+  nazwa: string; // Name in Polish as per backend
+  name: string; // Always present for compatibility
+  opis?: string; // Description in Polish as per backend
+  description?: string; // For compatibility with frontend code
+  ownerId: string;
+  owner?: {
+    _id: string;
     firstName: string;
     lastName: string;
-    username: string;
+    email: string;
   };
-  teamMembers: Array<{
-    id: string;
-    firstName: string;
-    lastName: string;
-    username: string;
-  }>;
+  members: ProjectMember[];
+  viewers: ProjectViewer[];
+  isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface ProjectInput {
-  name: string;
-  description: string;
-  status?: 'active' | 'completed' | 'on-hold' | 'cancelled';
-  priority?: 'low' | 'medium' | 'high' | 'critical';
-  startDate?: Date;
-  endDate?: Date;
-  teamMembers?: string[];
+  nazwa: string;
+  name?: string; // For compatibility
+  opis?: string;
+  description?: string; // For compatibility
+  members?: string[];
+  viewers?: string[];
 }

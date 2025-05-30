@@ -12,22 +12,33 @@ export enum Status {
 }
 
 export interface Story {
-  id: string;
-  name: string;
-  description: string;
+  _id: string;
+  id: string; // Always present for compatibility
+  nazwa: string; // Name in Polish as per backend
+  name: string; // Always present for compatibility
+  opis?: string; // Description in Polish as per backend  
+  description?: string; // For compatibility with frontend code
   priority: Priority;
-  state: Status;
-  project: string;
-  assignedTo?: string;
+  status: Status;
+  state: Status; // Always present for compatibility
+  projectId: string;
+  project: string; // Always present for compatibility
+  assignedUserId?: string;
+  assignedTo?: string; // For compatibility with frontend code
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface StoryInput {
-  name: string;
-  description: string;
+  nazwa: string;
+  name?: string; // For compatibility
+  opis?: string;
+  description?: string; // For compatibility
   priority: Priority;
-  state: Status;
-  assignedTo?: string;
+  status: Status;
+  state?: Status; // For compatibility
+  projectId: string;
+  assignedUserId?: string;
+  assignedTo?: string; // For compatibility
 }

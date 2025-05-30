@@ -98,7 +98,11 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
           family_name: decodedToken.family_name,
           picture: decodedToken.picture,
           sub: decodedToken.sub,
+          token: credentialResponse.credential // Pass the actual credential token to backend
         };
+
+        console.log('User profile being sent:', userProfile);
+        console.log('Token length:', credentialResponse.credential?.length);
 
         const result = await authService.loginWithGoogle(userProfile);
         if (result) {

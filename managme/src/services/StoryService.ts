@@ -66,7 +66,7 @@ export class StoryService {
       
       const story = await apiService.createStory({
         ...storyInput,
-        project: activeProject.id
+        projectId: activeProject.id
       });
       
       logger.info(`Successfully created story: ${story?.name}`, 'StoryService', 'createStory', { 

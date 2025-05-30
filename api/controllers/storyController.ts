@@ -1,5 +1,4 @@
 import { Request, Response } from 'express';
-import { v4 as uuidv4 } from 'uuid';
 import Story from '../models/Story';
 import Project from '../models/Project';
 import Task from '../models/Task';

@@ -1,21 +1,36 @@
 export enum UserRole {
   ADMIN = 'admin',
   DEVELOPER = 'developer',
-  VIEWER = 'viewer',
-  GUEST = 'guest' // New role
+  DEVOPS = 'devops',
+  GUEST = 'guest'
+}
+
+export enum AuthProvider {
+  LOCAL = 'local',
+  GOOGLE = 'google',
+  GITHUB = 'github'
 }
 
 export interface User {
-  id: string;
+  _id: string;
+  id: string; // Always present for compatibility
   firstName: string;
   lastName: string;
-  email?: string; // Add optional email
+  email: string;
   role: UserRole;
+  avatar?: string;
+  authProvider: AuthProvider;
+  isActive: boolean;
+  lastLogin?: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface UserInput {
   firstName: string;
   lastName: string;
-  email?: string; // Add optional email
+  email: string;
   role: UserRole;
+  password?: string;
+  authProvider?: AuthProvider;
 }
