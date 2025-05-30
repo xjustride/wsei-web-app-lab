@@ -133,13 +133,13 @@ class ApiService {
 
   // Projects
   async getProjects(): Promise<Project[]> {
-    const response = await axios.get(`${API_BASE_URL}/project`);
+    const response = await axios.get(`${API_BASE_URL}/projects`);
     logger.debug('Data received from API for getProjects:', 'ApiService.getProjects', {responseData: response.data });
     return (response.data as any[]).map((project: any) => this.normalizeProject(project));
   }
 
   async getProject(id: string): Promise<Project> {
-    const response = await axios.get(`${API_BASE_URL}/project/${id}`);
+    const response = await axios.get(`${API_BASE_URL}/projects/${id}`);
     return this.normalizeProject(response.data);
   }
 
@@ -151,7 +151,7 @@ class ApiService {
       members: projectInput.members || [],
       viewers: projectInput.viewers || []
     };
-    const response = await axios.post(`${API_BASE_URL}/project`, backendInput);
+    const response = await axios.post(`${API_BASE_URL}/projects`, backendInput);
     return this.normalizeProject(response.data);
   }
 
@@ -163,29 +163,39 @@ class ApiService {
       members: projectInput.members || [],
       viewers: projectInput.viewers || []
     };
-    const response = await axios.put(`${API_BASE_URL}/project/${id}`, backendInput);
+    const response = await axios.put(`${API_BASE_URL}/projects/${id}`, backendInput);
     return this.normalizeProject(response.data);
   }
 
   async deleteProject(id: string): Promise<void> {
-    await axios.delete(`${API_BASE_URL}/project/${id}`);
+    await axios.delete(`${API_BASE_URL}/projects/${id}`);
   }
 
   // Project member management
   async addProjectMember(projectId: string, userId: string): Promise<void> {
-    await axios.post(`${API_BASE_URL}/project/${projectId}/members`, { userId });
+    await axios.post(`${API_BASE_URL}/projects/${projectId}/members`, { userId });
   }
 
   async removeProjectMember(projectId: string, userId: string): Promise<void> {
-    await axios.delete(`${API_BASE_URL}/project/${projectId}/members/${userId}`);
+    await axios({
+      method: 'delete',
+      url: `${API_BASE_URL}/projects/${projectId}/members`,
+      data: { userId },
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 
   async addProjectViewer(projectId: string, userId: string): Promise<void> {
-    await axios.post(`${API_BASE_URL}/project/${projectId}/viewers`, { userId });
+    await axios.post(`${API_BASE_URL}/projects/${projectId}/viewers`, { userId });
   }
 
   async removeProjectViewer(projectId: string, userId: string): Promise<void> {
-    await axios.delete(`${API_BASE_URL}/project/${projectId}/viewers/${userId}`);
+    await axios({
+      method: 'delete',
+      url: `${API_BASE_URL}/projects/${projectId}/viewers`,
+      data: { userId },
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 
   // Stories

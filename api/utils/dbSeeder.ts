@@ -3,6 +3,7 @@ import Project from '../models/Project';
 import Story from '../models/Story';
 import Task from '../models/Task';
 import mongoose from 'mongoose';
+import bcrypt from 'bcrypt';
 
 export async function seedDatabase() {
   try {
@@ -14,12 +15,12 @@ export async function seedDatabase() {
 
     console.log('Seeding database with initial data...');
 
-    // Create users
+    // Create users with hashed passwords
     const admin = new User({
       firstName: 'Admin',
       lastName: 'User',
       email: 'admin@example.com',
-      passwordHash: 'admin123',
+      passwordHash: await bcrypt.hash('admin123', 10),
       role: 'admin'
     });
     await admin.save();
@@ -28,7 +29,7 @@ export async function seedDatabase() {
       firstName: 'John',
       lastName: 'Developer',
       email: 'developer@example.com',
-      passwordHash: 'developer123',
+      passwordHash: await bcrypt.hash('developer123', 10),
       role: 'developer'
     });
     await developer.save();
@@ -37,7 +38,7 @@ export async function seedDatabase() {
       firstName: 'Jane',
       lastName: 'DevOps',
       email: 'devops@example.com',
-      passwordHash: 'devops123',
+      passwordHash: await bcrypt.hash('devops123', 10),
       role: 'devops'
     });
     await devops.save();
@@ -46,7 +47,7 @@ export async function seedDatabase() {
       firstName: 'Guest',
       lastName: 'User',
       email: 'guest@example.com',
-      passwordHash: 'guest123',
+      passwordHash: await bcrypt.hash('guest123', 10),
       role: 'guest'
     });
     await guest.save();
