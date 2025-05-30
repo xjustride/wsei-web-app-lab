@@ -171,6 +171,34 @@ export class TaskService {
       return 0;
     }
   }
+
+  // Funkcja do odświeżania wszystkich zadań w aktywnym projekcie
+  async refreshTasks(): Promise<{
+    todoTasks: Task[],
+    doingTasks: Task[],
+    doneTasks: Task[]
+  }> {
+    try {
+      logger.logTaskAction('refreshTasks', undefined, { message: 'Odświeżanie wszystkich zadań' });
+      
+      const [todoTasks, doingTasks, doneTasks] = await Promise.all([
+        this.getTasksByStatus(TaskStatus.TODO),
+        this.getTasksByStatus(TaskStatus.DOING),
+        this.getTasksByStatus(TaskStatus.DONE)
+      ]);
+      
+      logger.logTaskAction('refreshTasks', undefined, { 
+        todoCount: todoTasks.length, 
+        doingCount: doingTasks.length, 
+        doneCount: doneTasks.length 
+      });
+      
+      return { todoTasks, doingTasks, doneTasks };
+    } catch (error) {
+      logger.logTaskError('refreshTasks', error as Error);
+      return { todoTasks: [], doingTasks: [], doneTasks: [] };
+    }
+  }
 }
 
 export const taskService = new TaskService();

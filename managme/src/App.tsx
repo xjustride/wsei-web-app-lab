@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { 
-  Container, CssBaseline, Box, Snackbar, Alert, AppBar, Toolbar,
-  Typography, Tab, Tabs, Paper, Button, Badge, Divider, Fade, useTheme
+  Container, CssBaseline, Box, Snackbar, Alert, AppBar, Toolbar, IconButton,
+  Typography, Tab, Tabs, Paper, Button, Badge, Divider, Fade, useTheme, Tooltip
 } from '@mui/material';
 import type { Project, ProjectInput } from '@/models/Project';
 import type { Story, StoryInput } from '@/models/Story';
@@ -35,6 +35,9 @@ import HomeIcon from '@mui/icons-material/Home';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import TaskIcon from '@mui/icons-material/Task';
 import AssignmentIcon from '@mui/icons-material/Assignment';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import KeyboardIcon from '@mui/icons-material/Keyboard';
+import Shortcuts from '@/components/Shortcuts';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
 try {
@@ -75,10 +78,91 @@ function AppContent() {
     severity: 'success' as 'success' | 'error' | 'warning' | 'info'
   });
   const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   useEffect(() => {
     checkAuthStatus();
   }, []);
+  
+  // Obsługa skrótów klawiaturowych
+  const handleKeyPress = (key: string, ctrlKey: boolean) => {
+    if (!isAuthenticated) return;
+    
+    // Obsługa skrótów w zależności od klucza
+    switch (key.toLowerCase()) {
+      case 't':
+        // Przełącz na widok tablicy zadań
+        if (activeProject) {
+          setView(View.TASKS);
+        }
+        break;
+      case 's':
+        // Przełącz na widok historyjek
+        if (activeProject) {
+          setView(View.STORIES);
+        }
+        break;
+      case 'p':
+        // Przełącz na widok projektów
+        setView(View.PROJECTS);
+        break;
+      case '+':
+      case 'n':
+        // Nowy element w zależności od aktualnego widoku
+        if (!isCurrentUserGuest) {
+          if (view === View.TASKS && activeProject) {
+            setView(View.TASK_FORM);
+            setEditingTask(null);
+          } else if (view === View.STORIES && activeProject) {
+            setView(View.STORY_FORM);
+            setEditingStory(null);
+          } else if (view === View.PROJECTS) {
+            setView(View.PROJECT_FORM);
+            setEditingProject(null);
+          }
+        }
+        break;
+      case 'r':
+        // Odśwież dane
+        loadData();
+        setNotification({
+          open: true,
+          message: 'Dane odświeżone',
+          severity: 'info'
+        });
+        break;
+      case 'escape':
+        // Anuluj/Zamknij
+        if ([View.PROJECT_FORM, View.STORY_FORM, View.TASK_FORM, View.TASK_DETAILS].includes(view)) {
+          if (view === View.PROJECT_FORM) {
+            setView(View.PROJECTS);
+          } else {
+            setView(View.TASKS);
+          }
+        } else if (showShortcuts) {
+          setShowShortcuts(false);
+        }
+        break;
+      case '?':
+        // Pokaż/ukryj pomoc dla skrótów
+        setShowShortcuts(!showShortcuts);
+        break;
+      default:
+        break;
+    }
+    
+    // Obsługa skrótów z klawiszem ctrl
+    if (ctrlKey) {
+      switch (key.toLowerCase()) {
+        case 's':
+          // Obsługa zapisywania w formularzach
+          // Ta obsługa będzie wewnątrz formularzy
+          break;
+        default:
+          break;
+      }
+    }
+  };
 
   const checkAuthStatus = async () => {
     const isLoggedIn = authService.isAuthenticated();
