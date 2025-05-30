@@ -1,50 +1,38 @@
 /// <reference types="cypress" />
 import '@testing-library/cypress/add-commands';
 
-// Logowanie użytkownika
 Cypress.Commands.add('login', (userType = 'Admin') => {
   cy.intercept('POST', '/api/auth/login').as('loginRequest');
   cy.visit('/', { timeout: 10000 });
   
-  // Poczekaj na załadowanie elementów formularza logowania, ale bez sztywnego wyszukiwania konkretnych tekstów
   cy.get('button', { timeout: 15000 }).should('exist');
   
-  // Sprawdź, czy są dostępne przyciski demo, dając stronie czas na załadowanie
   cy.get('body').then($body => {
-    // Metoda 1: Próbuj znaleźć przyciski demo i kliknij odpowiedni
     if ($body.find(`button:contains("${userType}")`).length > 0) {
       cy.contains('button', userType, { timeout: 10000 })
         .should('be.visible')
         .click({ force: true });
     } 
-    // Metoda 2: Jeśli nie ma przycisków demo, próbuj wypełnić formularz logowania
     else {
-      // Mapowanie typów użytkowników na dane logowania
       const userCredentials = {
         'Admin': { email: 'admin@example.com', password: 'admin123' },
         'Developer': { email: 'developer@example.com', password: 'developer123' },
         'DevOps': { email: 'devops@example.com', password: 'devops123' }
       };
       
-      // Wprowadź email
       cy.get('input[type="email"]').should('be.visible').type(userCredentials[userType].email);
       
-      // Wprowadź hasło
       cy.get('input[type="password"]').should('be.visible').type(userCredentials[userType].password);
       
-      // Kliknij przycisk logowania
       cy.contains('button', /Zaloguj|Login/).click({ force: true });
     }
   });
   
-  // Poczekaj na odpowiedź z serwera
   cy.wait('@loginRequest', { timeout: 15000 });
   
-  // Sprawdź czy jesteśmy zalogowani - powinny być widoczne projekty lub tablica zadań
   cy.get('header', { timeout: 15000 }).should('be.visible');
 });
 
-// Tworzenie projektu
 Cypress.Commands.add('createProject', (name = 'Test Project', description = 'Test project description') => {
   cy.intercept('POST', '/api/projects').as('createProject');
   cy.get('button').contains('Dodaj projekt').click();

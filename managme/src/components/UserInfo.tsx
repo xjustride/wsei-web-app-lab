@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Box, Typography, Avatar, Chip, Menu, MenuItem, Divider, Button } from '@mui/material';
+import { Box, Typography, Avatar, Button } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { User } from '@/models/User';
@@ -13,9 +13,6 @@ interface UserInfoProps {
 
 export default function UserInfo({ onLogout }: UserInfoProps) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [users, setUsers] = useState<User[]>([]);
-  const open = Boolean(anchorEl);
 
   useEffect(() => {
     const loadData = async () => {
@@ -25,104 +22,42 @@ export default function UserInfo({ onLogout }: UserInfoProps) {
       } else {
         setCurrentUser(userService.getCurrentUser());
       }
-      
-      const usersData = await userService.getAllUsers();
-      setUsers(usersData);
     };
     
     loadData();
   }, []);
 
-  const handleClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-
-  const handleSelectUser = (user: User) => {
-    userService.setCurrentUser(user);
-    setCurrentUser(user);
-    handleClose();
-  };
-  
-  const handleLogout = () => {
-    handleClose();
-    onLogout();
-  };
-
   if (!currentUser) return null;
 
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
       <Avatar sx={{ bgcolor: 'primary.main' }}>
         <PersonIcon />
       </Avatar>
-      <Chip
-        label={`${currentUser.firstName} ${currentUser.lastName}`}
-        onClick={handleClick}
+      <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+        <Typography variant="body1" sx={{ color: 'white', fontWeight: 'medium' }}>
+          {currentUser.firstName} {currentUser.lastName}
+        </Typography>
+        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+          Rola: {currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1)}
+        </Typography>
+      </Box>
+      <Button
+        onClick={onLogout}
+        startIcon={<LogoutIcon />}
         variant="outlined"
+        size="small"
         sx={{ 
-          cursor: 'pointer', 
           color: 'white', 
           borderColor: 'rgba(255,255,255,0.5)',
-          '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' }
-        }}
-      />
-      <Menu
-        anchorEl={anchorEl}
-        open={open}
-        onClose={handleClose}
-        MenuListProps={{ 'aria-labelledby': 'user-button' }}
-        PaperProps={{
-          sx: {
-            borderRadius: 1.5,
-            boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+          '&:hover': { 
+            borderColor: 'white',
+            bgcolor: 'rgba(255,255,255,0.1)' 
           }
         }}
       >
-        <Typography variant="subtitle2" sx={{ px: 2, py: 1, fontWeight: 'bold', color: 'primary.main' }}>
-          Profil użytkownika
-        </Typography>
-        <Box sx={{ px: 2, py: 1 }}>
-          <Typography variant="body2">{currentUser.firstName} {currentUser.lastName}</Typography>
-          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            Rola: {currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1)}
-          </Typography>
-        </Box>
-        
-        <Divider sx={{ my: 1 }} />
-        
-        <Typography variant="subtitle2" sx={{ px: 2, py: 1, fontWeight: 'bold', color: 'primary.main' }}>
-          Zmień użytkownika
-        </Typography>
-        {users.map((user) => (
-          <MenuItem 
-            key={user.id} 
-            onClick={() => handleSelectUser(user)}
-            selected={user.id === currentUser.id}
-            sx={{ 
-              '&.Mui-selected': { 
-                backgroundColor: 'primary.light', 
-                color: 'white',
-                '&:hover': {
-                  backgroundColor: 'primary.main'
-                }
-              }
-            }}
-          >
-            {user.firstName} {user.lastName}
-          </MenuItem>
-        ))}
-        
-        <Divider sx={{ my: 1 }} />
-        
-        <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>
-          <LogoutIcon fontSize="small" sx={{ mr: 1 }} />
-          Wyloguj się
-        </MenuItem>
-      </Menu>
+        Wyloguj
+      </Button>
     </Box>
   );
 }
