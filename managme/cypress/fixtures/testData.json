@@ -1,0 +1,22 @@
+{
+  "user": {
+    "email": "admin@example.com",
+    "password": "admin123",
+    "role": "admin"
+  },
+  "project": {
+    "name": "Test Project",
+    "description": "This is a test project for e2e testing"
+  },
+  "story": {
+    "name": "Test Story",
+    "description": "This is a test story for e2e testing",
+    "priority": "MEDIUM"
+  },
+  "task": {
+    "name": "Test Task",
+    "description": "This is a test task for e2e testing",
+    "priority": "MEDIUM",
+    "estimatedTime": 2
+  }
+}
