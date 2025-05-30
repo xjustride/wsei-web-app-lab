@@ -119,6 +119,20 @@ class ApiService {
 
   // Helper function to normalize task data for frontend compatibility
   private normalizeTask(task: any): Task {
+    // Map backend 'in-progress' status to frontend 'doing'
+    let status = task.status || task.state;
+    if (status === 'in-progress') {
+      status = 'doing';
+    }
+    
+    console.log('Normalizing task response:', { 
+      id: task._id || task.id,
+      backendStatus: task.status, 
+      normalizedStatus: status,
+      assignedUserId: task.assignedUserId,
+      assignedTo: task.assignedTo
+    });
+    
     return {
       ...task,
       id: task._id || task.id,
@@ -126,7 +140,8 @@ class ApiService {
       description: task.opis || task.description,
       project: task.projectId || task.project,
       story: task.storyId || task.story,
-      state: task.status || task.state,
+      state: status,
+      status: status, // Ensure both state and status are updated
       assignedTo: task.assignedUserId || task.assignedTo
     };
   }
@@ -303,10 +318,7 @@ class ApiService {
   async createTask(taskInput: TaskInput & { projectId: string; storyId: string }): Promise<Task> {
     try {
       // Map frontend status to backend status if provided
-      let status = taskInput.status || taskInput.state || 'todo';
-      if (status === 'doing') {
-        status = 'in-progress';
-      }
+      let status = 'todo'; // Default status
       
       // Convert frontend input to backend format
       const backendInput = {

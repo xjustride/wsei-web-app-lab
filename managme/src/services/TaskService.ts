@@ -77,9 +77,23 @@ export class TaskService {
 
   async updateTask(id: string, taskUpdate: TaskUpdateInput): Promise<Task | null> {
     try {
-      return await apiService.updateTask(id, taskUpdate);
+      logger.logTaskAction('updateTask', undefined, { id, taskUpdate });
+      const result = await apiService.updateTask(id, taskUpdate);
+      logger.logTaskAction('updateTask', undefined, { id, result });
+      
+      if (result) {
+        // Validate that we got back a valid task object
+        if (!result.id) {
+          logger.logTaskError('updateTask', new Error('Invalid task object returned from API'), id);
+        }
+        
+        // Force refresh from the server to ensure we have the latest data
+        // This helps with UI synchronization
+        return result;
+      }
+      return null;
     } catch (error) {
-      console.error('Błąd podczas aktualizacji zadania:', error);
+      logger.logTaskError('updateTask', error as Error, id);
       return null;
     }
   }
@@ -96,14 +110,21 @@ export class TaskService {
 
   async changeTaskStatus(id: string, newStatus: TaskStatus): Promise<Task | null> {
     try {
+      logger.logTaskAction('changeTaskStatus', undefined, { id, newStatus });
+      
       const task = await this.getTaskById(id);
-      if (!task) return null;
+      if (!task) {
+        logger.logTaskError('changeTaskStatus', new Error('Task not found'), id);
+        return null;
+      }
+
+      logger.logTaskAction('changeTaskStatus', undefined, { id, currentStatus: task.state, newStatus });
 
       const updateData: TaskUpdateInput = {
         state: newStatus
       };
 
-      // Dodaj timestampy w zależności od statusu
+      // Add timestamps depending on status
       const now = new Date();
       if (newStatus === TaskStatus.DOING && task.state !== TaskStatus.DOING) {
         updateData.startDate = now;
@@ -111,9 +132,17 @@ export class TaskService {
         updateData.endDate = now;
       }
 
-      return await this.updateTask(id, updateData);
+      const result = await this.updateTask(id, updateData);
+      
+      if (result) {
+        logger.logTaskAction('changeTaskStatus', undefined, { id, updatedTask: result });
+      } else {
+        logger.logTaskError('changeTaskStatus', new Error('Failed to update task status'), id);
+      }
+      
+      return result;
     } catch (error) {
-      console.error('Błąd podczas zmiany statusu zadania:', error);
+      logger.logTaskError('changeTaskStatus', error as Error, id);
       return null;
     }
   }

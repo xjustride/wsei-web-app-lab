@@ -36,6 +36,11 @@ export default function TaskDetails({ task, onBack, onUpdate, isGuest = false }:
   const [story, setStory] = useState<Story | null>(null);
   const [error, setError] = useState<string>('');
 
+  // Update selectedAssigneeId when task prop changes
+  useEffect(() => {
+    setSelectedAssigneeId(task.assignedTo || '');
+  }, [task.assignedTo]);
+
   useEffect(() => {
     loadUsers();
     loadStory();
@@ -83,12 +88,18 @@ export default function TaskDetails({ task, onBack, onUpdate, isGuest = false }:
     setError('');
     
     try {
+      console.log('Assigning user to task:', { taskId: task.id, selectedAssigneeId });
+      
       const updatedTask = await taskService.updateTask(task.id, { 
         assignedTo: selectedAssigneeId 
       });
       
       if (updatedTask) {
+        console.log('Task updated successfully:', updatedTask);
+        // Make sure the parent component gets the updated task
         onUpdate(updatedTask);
+      } else {
+        throw new Error('Failed to update task - no task returned');
       }
     } catch (error) {
       console.error('Error assigning task:', error);
@@ -103,10 +114,16 @@ export default function TaskDetails({ task, onBack, onUpdate, isGuest = false }:
     setError('');
     
     try {
+      console.log('Changing task status:', { taskId: task.id, currentStatus: task.state, newStatus });
+      
       const updatedTask = await taskService.changeTaskStatus(task.id, newStatus);
       
       if (updatedTask) {
+        console.log('Task status updated successfully:', updatedTask);
+        // Make sure the parent component gets the updated task
         onUpdate(updatedTask);
+      } else {
+        throw new Error('Failed to update task status - no task returned');
       }
     } catch (error) {
       console.error('Error changing task status:', error);
