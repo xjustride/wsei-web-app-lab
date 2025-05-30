@@ -63,15 +63,11 @@ export default function StoryForm({ story, onSubmit, onCancel }: StoryFormProps)
       isValid = false;
     }
 
-    if (!description.trim()) {
-      errors.description = 'Opis jest wymagany';
-      isValid = false;
-    }
-
-    if (!ownerId) {
-      errors.ownerId = 'Właściciel jest wymagany';
-      isValid = false;
-    }
+    // Description is optional, not required
+    // if (!description.trim()) {
+    //   errors.description = 'Opis jest wymagany';
+    //   isValid = false;
+    // }
 
     setFormErrors(errors);
     return isValid;
@@ -81,6 +77,7 @@ export default function StoryForm({ story, onSubmit, onCancel }: StoryFormProps)
     e.preventDefault();
     
     if (validateForm()) {
+      console.log('Submitting story with status:', status);
       onSubmit({ 
         nazwa: name.trim(),
         name: name.trim(), 
@@ -169,6 +166,7 @@ export default function StoryForm({ story, onSubmit, onCancel }: StoryFormProps)
               >
                 <MenuItem value={Status.TODO}>{Status.TODO}</MenuItem>
                 <MenuItem value={Status.DOING}>{Status.DOING}</MenuItem>
+                <MenuItem value={Status.IN_PROGRESS}>{Status.IN_PROGRESS}</MenuItem>
                 <MenuItem value={Status.DONE}>{Status.DONE}</MenuItem>
               </Select>
             </FormControl>

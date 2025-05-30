@@ -8,6 +8,7 @@ export enum Priority {
 export enum Status {
   TODO = "todo",
   DOING = "doing", 
+  IN_PROGRESS = "in-progress", // Add this to match backend expectation
   DONE = "done"
 }
 

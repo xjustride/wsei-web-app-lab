@@ -215,17 +215,34 @@ class ApiService {
   }
 
   async createStory(storyInput: StoryInput & { projectId: string }): Promise<Story> {
-    // Convert frontend input to backend format
-    const backendInput = {
-      nazwa: storyInput.name || storyInput.nazwa,
-      opis: storyInput.description || storyInput.opis,
-      priority: storyInput.priority,
-      status: storyInput.state || storyInput.status,
-      projectId: storyInput.projectId,
-      assignedUserId: storyInput.assignedTo || storyInput.assignedUserId
-    };
-    const response = await axios.post(`${API_BASE_URL}/stories`, backendInput);
-    return this.normalizeStory(response.data);
+    try {
+      // Map frontend status to backend status
+      let status = storyInput.state || storyInput.status;
+      if (status === 'doing') {
+        status = 'in-progress' as any; // Cast to any to satisfy TypeScript
+      }
+      
+      // Convert frontend input to backend format with more explicit mapping
+      const backendInput = {
+        name: storyInput.name || storyInput.nazwa || '',
+        description: storyInput.description || storyInput.opis || '',
+        priority: storyInput.priority || 'medium',
+        status: status || 'todo',
+        projectId: storyInput.projectId
+      };
+      
+      console.log('Creating story with data:', backendInput); // Debug log
+      
+      // Force the Content-Type header
+      const response = await axios.post(`${API_BASE_URL}/stories`, backendInput, {
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      return this.normalizeStory(response.data);
+    } catch (error: any) {
+      console.error('Error creating story:', error.response?.data || error.message);
+      throw error;
+    }
   }
 
   async updateStory(id: string, storyInput: Partial<StoryInput>): Promise<Story> {

@@ -69,9 +69,18 @@ export const getStoryById = async (req: Request, res: Response) => {
 
 export const createStory = async (req: Request, res: Response) => {
   try {
-    const { name, description, status, priority, projectId } = req.body;
+    const { name, description, status: rawStatus, priority, projectId } = req.body;
     const ownerId = (req as any).user.id;
     const userRole = (req as any).user.role;
+    
+    // Map frontend status to backend status if needed
+    let status = rawStatus;
+    if (status === 'doing') {
+      status = 'in-progress';
+    }
+    
+    // Debug logged data
+    console.log('Create Story Request Body:', req.body);
     
     if (!name || !projectId) {
       return res.status(400).json({ message: 'Name and projectId are required' });
@@ -95,8 +104,11 @@ export const createStory = async (req: Request, res: Response) => {
       priority: priority || 'medium',
       ownerId
     });
+    
+    console.log('Created story:', story);
     res.status(201).json(story);
   } catch (error) {
+    console.error('Error creating story:', error);
     res.status(500).json({ message: 'Server error', error: (error as Error).message });
   }
 };
