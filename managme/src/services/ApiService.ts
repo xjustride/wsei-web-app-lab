@@ -301,56 +301,110 @@ class ApiService {
   }
 
   async createTask(taskInput: TaskInput & { projectId: string; storyId: string }): Promise<Task> {
-    // Convert frontend input to backend format
-    const backendInput = {
-      nazwa: taskInput.name || taskInput.nazwa,
-      opis: taskInput.description || taskInput.opis,
-      priority: taskInput.priority,
-      projectId: taskInput.projectId,
-      storyId: taskInput.storyId,
-      estimatedTime: taskInput.estimatedTime,
-      assignedUserId: taskInput.assignedTo || taskInput.assignedUserId,
-      startDate: taskInput.startDate,
-      endDate: taskInput.endDate
-    };
-    const response = await axios.post(`${API_BASE_URL}/tasks`, backendInput);
-    return this.normalizeTask(response.data);
+    try {
+      // Map frontend status to backend status if provided
+      let status = taskInput.status || taskInput.state || 'todo';
+      if (status === 'doing') {
+        status = 'in-progress';
+      }
+      
+      // Convert frontend input to backend format
+      const backendInput = {
+        name: taskInput.name || taskInput.nazwa || '',
+        description: taskInput.description || taskInput.opis || '',
+        status: status,
+        priority: taskInput.priority || 'medium',
+        projectId: taskInput.projectId,
+        storyId: taskInput.storyId,
+        estimatedTime: taskInput.estimatedTime,
+        assignedUserId: taskInput.assignedTo || taskInput.assignedUserId,
+        startDate: taskInput.startDate,
+        endDate: taskInput.endDate
+      };
+      
+      console.log('Creating task with data:', backendInput); // Debug log
+      
+      // Force the Content-Type header
+      const response = await axios.post(`${API_BASE_URL}/tasks`, backendInput, {
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      return this.normalizeTask(response.data);
+    } catch (error: any) {
+      console.error('Error creating task:', error.response?.data || error.message);
+      throw error;
+    }
   }
 
   async updateTask(id: string, taskInput: TaskUpdateInput): Promise<Task> {
-    // Convert frontend input to backend format
-    const backendInput: any = {};
-    if (taskInput.name || taskInput.nazwa) {
-      backendInput.nazwa = taskInput.name || taskInput.nazwa;
+    try {
+      // Convert frontend input to backend format
+      const backendInput: any = {};
+      if (taskInput.name || taskInput.nazwa) {
+        backendInput.name = taskInput.name || taskInput.nazwa;
+      }
+      if (taskInput.description || taskInput.opis) {
+        backendInput.description = taskInput.description || taskInput.opis;
+      }
+      if (taskInput.priority) {
+        backendInput.priority = taskInput.priority;
+      }
+      if (taskInput.estimatedTime) {
+        backendInput.estimatedTime = taskInput.estimatedTime;
+      }
+      if (taskInput.state || taskInput.status) {
+        // Map frontend status to backend status if needed
+        let status = taskInput.state || taskInput.status;
+        if (status === 'doing') {
+          status = 'in-progress' as any; // Cast to any to bypass TypeScript's type checking
+        }
+        backendInput.status = status;
+      }
+      if (taskInput.assignedTo || taskInput.assignedUserId) {
+        backendInput.assignedUserId = taskInput.assignedTo || taskInput.assignedUserId;
+      }
+      if (taskInput.startDate) {
+        backendInput.startDate = taskInput.startDate;
+      }
+      if (taskInput.endDate) {
+        backendInput.endDate = taskInput.endDate;
+      }
+      
+      console.log('Updating task with data:', backendInput); // Debug log
+      
+      // Force the Content-Type header
+      const response = await axios.put(`${API_BASE_URL}/tasks/${id}`, backendInput, {
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      return this.normalizeTask(response.data);
+    } catch (error: any) {
+      console.error('Error updating task:', error.response?.data || error.message);
+      throw error;
     }
-    if (taskInput.description || taskInput.opis) {
-      backendInput.opis = taskInput.description || taskInput.opis;
-    }
-    if (taskInput.priority) {
-      backendInput.priority = taskInput.priority;
-    }
-    if (taskInput.estimatedTime) {
-      backendInput.estimatedTime = taskInput.estimatedTime;
-    }
-    if (taskInput.state || taskInput.status) {
-      backendInput.status = taskInput.state || taskInput.status;
-    }
-    if (taskInput.assignedTo || taskInput.assignedUserId) {
-      backendInput.assignedUserId = taskInput.assignedTo || taskInput.assignedUserId;
-    }
-    if (taskInput.startDate) {
-      backendInput.startDate = taskInput.startDate;
-    }
-    if (taskInput.endDate) {
-      backendInput.endDate = taskInput.endDate;
-    }
-    const response = await axios.put(`${API_BASE_URL}/tasks/${id}`, backendInput);
-    return this.normalizeTask(response.data);
   }
 
   async updateTaskStatus(id: string, status: string): Promise<Task> {
-    const response = await axios.put(`${API_BASE_URL}/tasks/${id}/status`, { status });
-    return this.normalizeTask(response.data);
+    try {
+      // Map frontend status to backend status if needed
+      let backendStatus = status;
+      if (status === 'doing') {
+        backendStatus = 'in-progress';
+      }
+      
+      console.log(`Updating task status to: ${backendStatus}`); // Debug log
+      
+      const response = await axios.put(
+        `${API_BASE_URL}/tasks/${id}/status`, 
+        { status: backendStatus },
+        { headers: { 'Content-Type': 'application/json' } }
+      );
+      
+      return this.normalizeTask(response.data);
+    } catch (error: any) {
+      console.error('Error updating task status:', error.response?.data || error.message);
+      throw error;
+    }
   }
 
   async addTimeLog(taskId: string, timeLog: { timeSpent: number; description?: string }): Promise<Task> {
